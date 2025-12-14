@@ -1,5 +1,6 @@
-# Rails 8 + Juris.js Application Template
+# Rails 8 + Juris.js Application Template (TemplateLifecycle)
 # This template creates a Rails 8 application with Juris.js frontend and ActiveDataFlow integration
+# Now using the TemplateLifecycle system for organized, extensible template management
 #
 # Usage:
 #   rails new myapp -m template.rb
@@ -9,94 +10,43 @@ def source_paths
   [__dir__]
 end
 
-# Display welcome message
-say "=" * 80
-say "Rails 8 + Juris.js Application Template"
-say "=" * 80
-say ""
-say "This template will set up a Rails 8 application with:"
-say "  • Juris.js frontend framework"
-say "  • Inertia.js for Rails integration"
-say "  • TailwindCSS for styling"
-say "  • ActiveDataFlow for data transformation"
-say "  • RSpec and Cucumber for testing"
-say "  • Pundit for authorization"
-say "  • Admin interface with infrastructure/users/financial tabs"
-say ""
+# Load the TemplateLifecycle system
+require_relative 'lib/template_lifecycle'
 
-# Ask user for configuration preferences
-@use_redis = yes?("Use Redis? (no = use redis-emulator)")
-@use_active_data_flow = yes?("Include ActiveDataFlow integration?")
-@use_docker = yes?("Setup Docker/Kamal deployment?")
-@generate_sample_models = yes?("Generate sample Product models?")
-@setup_admin = yes?("Setup admin interface?")
+# Initialize and execute the TemplateLifecycle
+lifecycle = TemplateLifecycle.new(self)
 
-say "\nStarting template application...\n", :green
-
-# Phase 1: Platform Setup
-say "\n" + "=" * 80
-say "Phase 1: Platform Setup"
-say "=" * 80 + "\n"
-
-apply "modules/01_platform/ruby_version.rb"
-apply "modules/01_platform/rails_config.rb"
-apply "modules/01_platform/database.rb"
-
-# Phase 2: Infrastructure
-say "\n" + "=" * 80
-say "Phase 2: Infrastructure Setup"
-say "=" * 80 + "\n"
-
-apply "modules/02_infrastructure/gems.rb"
-apply "modules/02_infrastructure/redis.rb"
-apply "modules/02_infrastructure/solid_stack.rb"
-apply "modules/02_infrastructure/deployment.rb" if @use_docker
-
-# Phase 3: Frontend
-say "\n" + "=" * 80
-say "Phase 3: Frontend Setup"
-say "=" * 80 + "\n"
-
-apply "modules/03_frontend/vite.rb"
-apply "modules/03_frontend/tailwind.rb"
-apply "modules/03_frontend/inertia.rb"
-apply "modules/03_frontend/juris.rb"
-
-# Phase 4: Testing
-say "\n" + "=" * 80
-say "Phase 4: Testing Setup"
-say "=" * 80 + "\n"
-
-apply "modules/04_testing/rspec.rb"
-apply "modules/04_testing/cucumber.rb"
-
-# Phase 5: Security
-say "\n" + "=" * 80
-say "Phase 5: Security Setup"
-say "=" * 80 + "\n"
-
-apply "modules/05_security/authorization.rb"
-apply "modules/05_security/security_gems.rb"
-
-# Phase 6: Data Flow
-if @use_active_data_flow
-  say "\n" + "=" * 80
-  say "Phase 6: ActiveDataFlow Setup"
-  say "=" * 80 + "\n"
-  
-  apply "modules/06_data_flow/active_data_flow.rb"
+# Add conditional module execution based on configuration
+lifecycle.phases.each do |phase|
+  case phase.folder_name
+  when 'infrastructure'
+    # Add condition for deployment module
+    deployment_module = phase.modules.find { |m| m[:path].include?('deployment') }
+    if deployment_module
+      deployment_module[:conditions] = { use_docker: true }
+    end
+  when 'data_flow'
+    # Add condition for ActiveDataFlow modules
+    phase.modules.each do |module_info|
+      module_info[:conditions] = { use_active_data_flow: true }
+    end
+  when 'application'
+    # Add condition for models module
+    models_module = phase.modules.find { |m| m[:path].include?('models') }
+    if models_module
+      models_module[:conditions] = { generate_sample_models: true }
+    end
+    
+    # Add condition for admin module
+    admin_module = phase.modules.find { |m| m[:path].include?('admin') }
+    if admin_module
+      admin_module[:conditions] = { setup_admin: true }
+    end
+  end
 end
 
-# Phase 7: Application Features
-say "\n" + "=" * 80
-say "Phase 7: Application Features"
-say "=" * 80 + "\n"
-
-apply "modules/07_application/models.rb" if @generate_sample_models
-apply "modules/07_application/controllers.rb"
-apply "modules/07_application/views.rb"
-apply "modules/07_application/routes.rb"
-apply "modules/07_application/admin.rb" if @setup_admin
+# Execute the template lifecycle
+execution_summary = lifecycle.execute
 
 # After bundle tasks
 after_bundle do
