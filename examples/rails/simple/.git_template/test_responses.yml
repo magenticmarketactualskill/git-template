@@ -1,0 +1,26 @@
+# Test Responses Configuration for Simple Rails Template
+# This file defines automatic responses to interactive prompts during testing
+#
+# Format:
+#   "prompt_pattern": "response"
+#
+# Patterns can be:
+#   - Simple strings (will be escaped): "Add authentication with Devise?"
+#   - Regex patterns (wrap in /): "/Add.*authentication.*\?/"
+#
+# Responses should be the exact text you would type, without quotes
+
+# Simple template specific prompts
+"Add authentication with Devise? (y/n)": "n"
+"Add Bootstrap for styling? (y/n)": "n"
+"Setup RSpec for testing? (y/n)": "n"
+"Initialize git repository? (y/n)": "n"
+"Load seed data? (y/n)": "n"
+
+# File conflict prompts (always overwrite in tests)
+"/Overwrite.*\\? \\(enter \"h\" for help\\) \\[Ynaqdhm\\]/": "y"
+"/conflict.*Overwrite.*\\[Ynaqdhm\\]/": "y"
+
+# Generic fallbacks
+"/\\? \\(y\\/n\\)/": "n"
+"/\\? \\(yes\\/no\\)/": "no"

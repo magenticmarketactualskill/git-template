@@ -386,31 +386,10 @@ module GitTemplate
     def execute_template_non_interactive(template_path, env_vars, log)
       require "open3"
       require "pty"
+      require "yaml"
       
-      # Define automatic responses for common prompts
-      auto_responses = {
-        # File overwrite prompts
-        /Overwrite.*\? \(enter "h" for help\) \[Ynaqdhm\]/ => "y\n",
-        /conflict.*Overwrite.*\[Ynaqdhm\]/ => "y\n",
-        
-        # Simple template prompts
-        /Add authentication with Devise\? \(y\/n\)/ => "n\n",
-        /Add Bootstrap for styling\? \(y\/n\)/ => "n\n", 
-        /Setup RSpec for testing\? \(y\/n\)/ => "n\n",
-        /Initialize git repository\? \(y\/n\)/ => "n\n",
-        /Load seed data\? \(y\/n\)/ => "n\n",
-        
-        # Rails8-juris template prompts
-        /Use Redis\? \(no = use redis-emulator\)/ => "no\n",
-        /Include ActiveDataFlow integration\?/ => "no\n",
-        /Setup Docker\/Kamal deployment\?/ => "no\n",
-        /Generate sample Product models\?/ => "no\n",
-        /Setup admin interface\?/ => "no\n",
-        
-        # Generic yes/no prompts (default to no for safety)
-        /\? \(y\/n\)/ => "n\n",
-        /\? \(yes\/no\)/ => "no\n"
-      }
+      # Load template-specific responses
+      auto_responses = load_template_responses(template_path, log)
       
       command = "bin/rails app:template LOCATION=#{template_path}"
       
@@ -462,6 +441,68 @@ module GitTemplate
         puts "Error executing template: #{e.message}"
         log.puts "Error executing template: #{e.message}"
         false
+      end
+    end
+
+    def load_template_responses(template_path, log)
+      # Default responses for common prompts
+      default_responses = {
+        # File overwrite prompts
+        /Overwrite.*\? \(enter "h" for help\) \[Ynaqdhm\]/ => "y\n",
+        /conflict.*Overwrite.*\[Ynaqdhm\]/ => "y\n",
+        
+        # Generic yes/no prompts (default to no for safety)
+        /\? \(y\/n\)/ => "n\n",
+        /\? \(yes\/no\)/ => "no\n"
+      }
+      
+      # Try to load template-specific responses
+      template_dir = File.dirname(template_path)
+      config_file = File.join(template_dir, "test_responses.yml")
+      
+      if File.exist?(config_file)
+        begin
+          config = YAML.load_file(config_file)
+          puts "📋 Loading template responses from: #{config_file}"
+          log.puts "📋 Loading template responses from: #{config_file}"
+          
+          # Convert string patterns to regex and merge with defaults
+          template_responses = {}
+          config.each do |pattern_str, response|
+            begin
+              # Convert string to regex, handling both simple strings and regex patterns
+              regex = if pattern_str.start_with?('/') && pattern_str.end_with?('/')
+                # Handle regex format: "/pattern/flags"
+                pattern_content = pattern_str[1..-2]  # Remove leading and trailing /
+                Regexp.new(pattern_content, Regexp::IGNORECASE)
+              else
+                # Handle simple string patterns
+                Regexp.new(Regexp.escape(pattern_str), Regexp::IGNORECASE)
+              end
+              
+              # Ensure response ends with newline
+              response_with_newline = response.to_s.end_with?("\n") ? response.to_s : "#{response}\n"
+              template_responses[regex] = response_with_newline
+              
+              puts "  • #{pattern_str} → #{response.inspect}"
+              log.puts "  • #{pattern_str} → #{response.inspect}"
+            rescue => e
+              puts "⚠️  Warning: Invalid pattern '#{pattern_str}': #{e.message}"
+              log.puts "⚠️  Warning: Invalid pattern '#{pattern_str}': #{e.message}"
+            end
+          end
+          
+          # Merge template responses with defaults (template responses take precedence)
+          default_responses.merge(template_responses)
+        rescue => e
+          puts "⚠️  Warning: Could not load #{config_file}: #{e.message}"
+          log.puts "⚠️  Warning: Could not load #{config_file}: #{e.message}"
+          default_responses
+        end
+      else
+        puts "📋 Using default responses (no test_responses.yml found)"
+        log.puts "📋 Using default responses (no test_responses.yml found)"
+        default_responses
       end
     end
 
