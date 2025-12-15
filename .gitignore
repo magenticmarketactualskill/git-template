@@ -1,0 +1,2 @@
+# Vendor directory - contains vendored gems with their own git repositories
+vendor/
