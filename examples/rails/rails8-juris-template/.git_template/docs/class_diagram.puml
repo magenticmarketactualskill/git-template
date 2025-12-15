@@ -1,0 +1,160 @@
+@startuml Rails8-Juris Class Diagram
+
+' Models
+package "Models" {
+  class Product {
+    +id: integer
+    +name: string
+    +sku: string
+    +price: decimal
+    +category: string
+    +active: boolean
+    +created_at: datetime
+    +updated_at: datetime
+    --
+    +scope :active
+  }
+
+  class ProductExport {
+    +id: integer
+    +product_id: integer
+    +name: string
+    +sku: string
+    +price_cents: integer
+    +category_slug: string
+    +exported_at: datetime
+    +created_at: datetime
+    +updated_at: datetime
+    --
+    +belongs_to :product
+  }
+
+  Product "1" -- "0..*" ProductExport : has many >
+}
+
+' Controllers
+package "Controllers" {
+  class ApplicationController {
+    +include InertiaCsrf
+    +include Pundit::Authorization
+    --
+    -user_not_authorized()
+  }
+
+  class HomeController {
+    +index()
+  }
+
+  class ProductsController {
+    +index()
+    +show()
+  }
+
+  class ProductExportsController {
+    +index()
+  }
+
+  namespace Admin {
+    class DashboardController {
+      +index()
+      --
+      -authorize_admin!()
+    }
+
+    class InfrastructureController {
+      +index()
+      --
+      -system_information()
+      -database_information()
+      -cache_information()
+    }
+
+    class UsersController {
+      +index()
+    }
+
+    class FinancialController {
+      +index()
+      --
+      -financial_summary()
+    }
+  }
+
+  ApplicationController <|-- HomeController
+  ApplicationController <|-- ProductsController
+  ApplicationController <|-- ProductExportsController
+  ApplicationController <|-- DashboardController
+  ApplicationController <|-- InfrastructureController
+  ApplicationController <|-- UsersController
+  ApplicationController <|-- FinancialController
+}
+
+' Data Flows
+package "ActiveDataFlow" {
+  class ProductSyncFlow {
+    +source: active_record
+    +transform: block
+    +sink: active_record
+    --
+    +process()
+  }
+
+  ProductSyncFlow ..> Product : reads from
+  ProductSyncFlow ..> ProductExport : writes to
+}
+
+' Frontend Components
+package "Frontend (Juris.js)" {
+  class MainLayout {
+    +title: string
+    +children: html
+    --
+    +render()
+  }
+
+  class ProductsIndex {
+    +products: array
+    --
+    +render()
+  }
+
+  class ProductsShow {
+    +product: object
+    --
+    +render()
+  }
+
+  class ProductExportsIndex {
+    +productExports: array
+    --
+    +render()
+  }
+
+  class AdminDashboardIndex {
+    +tab: string
+    --
+    +render()
+  }
+
+  MainLayout <.. ProductsIndex : uses
+  MainLayout <.. ProductsShow : uses
+  MainLayout <.. ProductExportsIndex : uses
+  MainLayout <.. AdminDashboardIndex : uses
+}
+
+' UI Components
+package "UI Components" {
+  class Table
+  class Button
+  class Badge
+  class Card
+
+  ProductsIndex ..> Table : uses
+  ProductsIndex ..> Badge : uses
+  ProductsShow ..> Card : uses
+  ProductsShow ..> Badge : uses
+  ProductExportsIndex ..> Table : uses
+  AdminDashboardIndex ..> Card : uses
+}
+
+@enduml

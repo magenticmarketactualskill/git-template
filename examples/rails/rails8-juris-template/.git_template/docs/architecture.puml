@@ -1,0 +1,90 @@
+@startuml Rails8-Juris Architecture
+
+!define RECTANGLE class
+
+skinparam componentStyle rectangle
+
+package "Browser" {
+  [User Interface] as UI
+}
+
+package "Frontend (Juris.js)" {
+  [Vite Dev Server] as Vite
+  [Inertia.js Client] as InertiaClient
+  [Juris.js Framework] as Juris
+  [Pages] as Pages
+  [Components] as Components
+  [TailwindCSS] as Tailwind
+}
+
+package "Rails Backend" {
+  [Rails Router] as Router
+  [Controllers] as Controllers
+  [Inertia.js Server] as InertiaServer
+  [Models] as Models
+  [ActiveDataFlow] as ADF
+  [Pundit] as Auth
+}
+
+package "Infrastructure" {
+  database "SQLite3" as DB
+  [Solid Cache] as Cache
+  [Solid Queue] as Queue
+  [Redis/Emulator] as Redis
+}
+
+package "Deployment" {
+  [Docker] as Docker
+  [Kamal] as Kamal
+  cloud "Production" as Prod
+}
+
+' Frontend connections
+UI --> InertiaClient
+InertiaClient --> Pages
+Pages --> Juris
+Pages --> Components
+Components --> Tailwind
+Vite ..> Pages : builds
+Vite ..> Components : builds
+
+' Backend connections
+InertiaClient <--> InertiaServer : JSON
+InertiaServer --> Router
+Router --> Controllers
+Controllers --> Models
+Controllers --> Auth
+Models --> DB
+ADF --> Models
+
+' Infrastructure connections
+Controllers ..> Cache : caching
+Controllers ..> Queue : jobs
+Cache --> DB
+Queue --> DB
+Controllers ..> Redis : sessions
+
+' Deployment connections
+Docker --> Kamal
+Kamal --> Prod
+Docker ..> "Rails Backend" : contains
+Docker ..> Frontend : contains
+
+note right of InertiaClient
+  Inertia.js provides seamless
+  integration between Rails
+  and Juris.js frontend
+end note
+
+note right of ADF
+  ActiveDataFlow handles
+  data transformation from
+  Product to ProductExport
+end note
+
+note bottom of Docker
+  Containerized deployment
+  via Kamal to any server
+end note
+
+@enduml
