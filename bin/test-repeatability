@@ -1,0 +1,69 @@
+#!/usr/bin/env ruby
+
+# Test script to verify template repeatability
+# Usage: bin/test-repeatability examples/rails/simple
+
+require_relative "../lib/git_template/cli"
+
+if ARGV.empty?
+  puts "Usage: bin/test-repeatability <templated_app_path>"
+  puts "Example: bin/test-repeatability examples/rails/simple"
+  exit 1
+end
+
+templated_app_path = ARGV[0]
+
+puts "🔄 Testing template repeatability for: #{templated_app_path}"
+puts "=" * 60
+
+# First run
+puts "\n1️⃣ First run (should apply template):"
+system("bin/git-template test --templated_app_path #{templated_app_path}")
+
+# Check if test directory exists
+test_dir = "template_test/#{templated_app_path}"
+unless File.directory?(test_dir)
+  puts "❌ Test directory not found: #{test_dir}"
+  exit 1
+end
+
+# Commit the changes from first run
+puts "\n📝 Committing changes from first run..."
+Dir.chdir(test_dir) do
+  system("git add .")
+  system("git commit -m 'Applied template - first run'")
+end
+
+# Second run (should show no changes)
+puts "\n2️⃣ Second run (should show no changes):"
+Dir.chdir(test_dir) do
+  # Run template again
+  env_vars = {
+    "RAILS_TEMPLATE_NON_INTERACTIVE" => "true",
+    "TEMPLATE_USE_REDIS" => "false",
+    "TEMPLATE_USE_ACTIVE_DATA_FLOW" => "false", 
+    "TEMPLATE_USE_DOCKER" => "false",
+    "TEMPLATE_GENERATE_SAMPLE_MODELS" => "false",
+    "TEMPLATE_SETUP_ADMIN" => "false",
+    "THOR_MERGE" => "true"
+  }
+  
+  puts "🔧 Running template again..."
+  system(env_vars, "bin/rails app:template LOCATION=.git_template/template.rb")
+  
+  # Check for changes
+  status_output = `git status --porcelain`
+  
+  if status_output.strip.empty?
+    puts "\n✅ SUCCESS: No difference, test passed"
+    puts "📋 Template is idempotent (safe to run multiple times)"
+  else
+    puts "\n⚠️  WARNING: Template made changes on second run"
+    puts "📋 Git status:"
+    puts status_output
+    puts "\n📋 This indicates the template is not idempotent"
+  end
+end
+
+puts "\n" + "=" * 60
+puts "🏁 Repeatability test completed"

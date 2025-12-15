@@ -9,6 +9,12 @@ def source_paths
   [__dir__]
 end
 
+# Helper method to check if a gem already exists in the Gemfile
+def gem_exists?(gem_name)
+  gemfile_content = File.read("Gemfile")
+  gemfile_content.match?(/^\s*gem\s+["']#{Regexp.escape(gem_name)}["']/)
+end
+
 # Display welcome message
 say "=" * 60
 say "Simple Rails Application Template"
@@ -44,14 +50,16 @@ say "Adding essential gems...", :green
 
 # Development and test gems
 gem_group :development, :test do
-  gem "debug", platforms: %i[ mri windows ]
+  # Only add debug if not already present
+  gem "debug", platforms: %i[ mri windows ] unless gem_exists?("debug")
   gem "rspec-rails" if @setup_testing
   gem "factory_bot_rails" if @setup_testing
   gem "faker" if @setup_testing
 end
 
 gem_group :development do
-  gem "web-console"
+  # Only add web-console if not already present
+  gem "web-console" unless gem_exists?("web-console")
 end
 
 # Add authentication if requested

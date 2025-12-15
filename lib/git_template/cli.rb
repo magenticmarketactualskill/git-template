@@ -318,6 +318,20 @@ module GitTemplate
           # Count changes for summary
           modified_files = status_output.lines.select { |line| line.start_with?(' M') }.count
           new_files = status_output.lines.select { |line| line.start_with?('??') }.count
+          deleted_files = status_output.lines.select { |line| line.start_with?(' D') }.count
+          
+          # Check if template is repeatable (no changes on second run)
+          total_changes = modified_files + new_files + deleted_files
+          is_repeatable = total_changes == 0 && template_result
+          
+          # Determine test result
+          test_result = if is_repeatable
+            "✅ No difference, test passed"
+          elsif template_result && total_changes > 0
+            "⚠️  Template applied successfully but made changes"
+          else
+            "❌ Template execution failed or had errors"
+          end
           
           # Create summary
           summary_content = <<~SUMMARY
@@ -330,7 +344,11 @@ module GitTemplate
             Results:
             • #{modified_files} files modified
             • #{new_files} new files created
-            • Template execution: #{template_result ? 'SUCCESS' : 'PARTIAL (with errors)'}
+            • #{deleted_files} files deleted
+            • Template execution: #{template_result ? 'SUCCESS' : 'FAILED'}
+            • Test result: #{test_result}
+            
+            Repeatability: #{is_repeatable ? 'PASSED - Template is idempotent' : 'FAILED - Template makes changes on repeat runs'}
             
             Log Files:
             • Main execution log: #{main_log}
@@ -344,7 +362,17 @@ module GitTemplate
           puts "\n📊 Summary:"
           puts "  • #{modified_files} files modified"
           puts "  • #{new_files} new files created"
-          puts "  • Template execution: #{template_result ? 'SUCCESS' : 'PARTIAL (with errors)'}"
+          puts "  • #{deleted_files} files deleted"
+          puts "  • Template execution: #{template_result ? 'SUCCESS' : 'FAILED'}"
+          puts ""
+          puts "🔄 Repeatability Test:"
+          if is_repeatable
+            puts "  ✅ No difference, test passed"
+            puts "  📋 Template is idempotent (safe to run multiple times)"
+          else
+            puts "  ⚠️  Template made changes on this run"
+            puts "  📋 This may be expected for first-time application"
+          end
           puts ""
           puts "📁 Test results available in: #{dest_path}"
           puts "📋 Logs saved to: #{log_dir}"
@@ -356,7 +384,10 @@ module GitTemplate
           log.puts "\n📊 Summary:"
           log.puts "  • #{modified_files} files modified"
           log.puts "  • #{new_files} new files created"
-          log.puts "  • Template execution: #{template_result ? 'SUCCESS' : 'PARTIAL (with errors)'}"
+          log.puts "  • #{deleted_files} files deleted"
+          log.puts "  • Template execution: #{template_result ? 'SUCCESS' : 'FAILED'}"
+          log.puts "  • Test result: #{test_result}"
+          log.puts "  • Repeatability: #{is_repeatable ? 'PASSED' : 'FAILED'}"
           log.puts "📁 Test results available in: #{dest_path}"
           log.puts "📋 Logs saved to: #{log_dir}"
         end
