@@ -1,0 +1,3 @@
+[submodule "examples/rails/rails8-juris"]
+	path = examples/rails/rails8-juris
+	url = https://github.com/magenticmarketactualskill/rails8-juris.git
