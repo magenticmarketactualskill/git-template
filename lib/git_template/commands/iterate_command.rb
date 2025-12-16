@@ -240,9 +240,22 @@ module GitTemplate
 
       def execute_create_templated_folder(analysis, options)
         application_folder = analysis[:application_folder]
-        folder_name = File.basename(application_folder)
-        parent_dir = File.dirname(application_folder)
-        templated_folder = File.join(parent_dir, "#{folder_name}-templated")
+        # Use new templated/ directory structure
+        # We need to work with relative paths for the templated/ structure
+        
+        # Get the current working directory to determine relative path
+        current_dir = Dir.pwd
+        expanded_path = File.expand_path(application_folder)
+        
+        # If expanded_path is absolute and starts with current_dir, make it relative
+        if expanded_path.start_with?(current_dir)
+          relative_path = expanded_path[(current_dir.length + 1)..-1] # +1 to skip the '/'
+        else
+          # If it's already relative or doesn't start with current_dir, use as-is
+          relative_path = application_folder.start_with?('/') ? application_folder[1..-1] : application_folder
+        end
+        
+        templated_folder = File.join('templated', relative_path)
         
         # Create templated folder structure
         FileUtils.mkdir_p(templated_folder)

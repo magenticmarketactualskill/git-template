@@ -71,18 +71,33 @@ module GitTemplate
       end
 
       def find_templated_folder_path
-        # Look for folder with -templated suffix in the same parent directory
+        # Look for folder in top-level templated/ directory structure
+        # We need to work with the original relative path, not the expanded absolute path
+        
+        # Get the current working directory to determine relative path
+        current_dir = Dir.pwd
+        
+        # If @path is absolute and starts with current_dir, make it relative
+        if @path.start_with?(current_dir)
+          relative_path = @path[(current_dir.length + 1)..-1] # +1 to skip the '/'
+        else
+          # If it's already relative or doesn't start with current_dir, use as-is
+          relative_path = @path.start_with?('/') ? @path[1..-1] : @path
+        end
+        
+        templated_path = File.join('templated', relative_path)
+        
+        # Also check legacy -templated suffix patterns for backward compatibility
         parent_dir = File.dirname(@path)
         folder_name = File.basename(@path)
         
-        # Try different templated folder naming patterns
         templated_patterns = [
-          "#{folder_name}-templated",
-          "#{folder_name}-templatd"  # Handle typo in existing examples
+          templated_path,  # New: templated/examples/rails/simple
+          File.join(parent_dir, "#{folder_name}-templated"),  # Legacy: simple-templated
+          File.join(parent_dir, "#{folder_name}-templatd")   # Handle typo in existing examples
         ]
         
-        templated_patterns.each do |pattern|
-          candidate_path = File.join(parent_dir, pattern)
+        templated_patterns.each do |candidate_path|
           return candidate_path if File.directory?(candidate_path)
         end
         

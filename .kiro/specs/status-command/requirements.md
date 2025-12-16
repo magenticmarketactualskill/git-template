@@ -10,7 +10,7 @@ The git-template CLI tool provides lifecycle management for Rails application te
 - **Template_Configuration**: A `.git_template` directory containing template configuration and scripts
 - **Git_Repository**: A directory containing a `.git` subdirectory indicating version control initialization
 - **Application_Folder**: A directory containing an application that may or may not have Template_Configuration and may or may not be a Git_Repository
-- **Templated_Folder**: A directory containing an application generated from template, suffixed with `-templated`, that is never a Git_Repository
+- **Templated_Folder**: A directory containing an application generated from template, located in the `templated/` directory structure (e.g., `templated/examples/rails/simple`), that is never a Git_Repository
 - **Lifecycle_Phases**: Sequential template phases that build the repository structure
 - **Cleanup_Phase**: Template phase that makes final adjustments and modifications
 

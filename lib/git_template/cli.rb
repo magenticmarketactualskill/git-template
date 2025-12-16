@@ -556,7 +556,7 @@ module GitTemplate
 
     desc "check_target", "Apply template to target app and compare with templated version"
     option :target, type: :string, required: true, desc: "Path to base Rails app (e.g., examples/rails/rails8-juris)"
-    option :templated, type: :string, required: true, desc: "Path to templated version with .git_template (e.g., examples/rails/rails8-juris-templated)"
+    option :templated, type: :string, required: true, desc: "Path to templated version with .git_template (e.g., templated/examples/rails/rails8-juris)"
     def check_target
       require "fileutils"
       require "time"

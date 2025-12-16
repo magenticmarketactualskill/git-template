@@ -184,7 +184,7 @@ Property 5: Status command detects git repositories
 **Validates: Requirements 2.2**
 
 Property 6: Status command finds templated folders
-*For any* application folder, the status command should correctly determine if a corresponding templated folder (with -templated suffix) exists
+*For any* application folder, the status command should correctly determine if a corresponding templated folder (in templated/ directory structure) exists
 **Validates: Requirements 2.3**
 
 Property 7: Status command checks templated folder configuration

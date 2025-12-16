@@ -190,6 +190,28 @@ The template system has evolved from a cleanup-phase approach to specialized pha
 - Better organization, easier maintenance and iteration
 - Clear separation of concerns
 
+### Templated Directory Structure
+
+The git-template system uses a top-level `templated/` directory to organize template development work:
+
+```
+project-root/
+├── examples/rails/myapp/           # Original application
+├── templated/
+│   └── examples/rails/myapp/       # Templated version for development
+│       └── .git_template/          # Template configuration
+└── other-files...
+```
+
+**Benefits of this structure:**
+- **Clean organization**: All templated versions in one place
+- **No naming conflicts**: Avoids `-templated` suffix confusion
+- **Easy navigation**: Clear separation between originals and templated versions
+- **Scalable**: Works well with multiple applications and nested structures
+
+**Legacy Support:**
+The system maintains backward compatibility with `-templated` suffix folders while encouraging migration to the new structure.
+
 ## Configuration Options
 
 ### Template Implementation Configuration
