@@ -101,6 +101,18 @@ git-template push . --commit-changes --commit-message "Template improvements"
 git-template push . --initialize-if-needed
 ```
 
+#### 5. Generate Template Documentation
+```bash
+# Convert template.rb to markdown documentation
+git-template to_md examples/rails/myapp
+
+# Specify custom output file
+git-template to_md examples/rails/myapp --output-file docs/template-guide.md
+
+# Show verbose output during conversion
+git-template to_md examples/rails/myapp --verbose
+```
+
 ### Template Execution Lifecycle
 
 #### For New Rails Applications
@@ -361,6 +373,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 | `git-template iterate FOLDER` | Iterate and refine templates | `--create-templated-folder`, `--detailed-comparison` |
 | `git-template update FOLDER` | Update template configuration | `--all`, `--fix-issues`, `--update-metadata` |
 | `git-template push FOLDER [REMOTE]` | Push template development work | `--commit-changes`, `--initialize-if-needed` |
+| `git-template to_md FOLDER` | Convert template.rb to markdown documentation | `--output-file`, `--verbose` |
 
 ### Template Execution Commands
 

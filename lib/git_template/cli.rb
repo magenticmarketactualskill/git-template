@@ -208,6 +208,48 @@ module GitTemplate
       end
     end
 
+    desc "to_md FOLDER", "Convert template.rb to template.rb.md with markdown documentation"
+    option :output_file, type: :string, desc: "Output file name (default: template.rb.md)"
+    option :verbose, type: :boolean, default: false, desc: "Show verbose output"
+    def to_md(folder_path)
+      begin
+        # Validate folder path
+        unless File.directory?(folder_path)
+          puts "❌ Error: Folder '#{folder_path}' does not exist"
+          exit 1
+        end
+        
+        # Look for template.rb file
+        template_file = File.join(folder_path, '.git_template', 'template.rb')
+        unless File.exist?(template_file)
+          puts "❌ Error: template.rb not found at #{template_file}"
+          exit 1
+        end
+        
+        # Determine output file
+        output_file = options[:output_file] || File.join(folder_path, '.git_template', 'template.rb.md')
+        
+        puts "🔄 Converting template.rb to markdown documentation..." if options[:verbose]
+        puts "   Source: #{template_file}" if options[:verbose]
+        puts "   Output: #{output_file}" if options[:verbose]
+        
+        # Read and parse template.rb
+        template_content = File.read(template_file)
+        markdown_content = convert_template_to_markdown(template_content, folder_path)
+        
+        # Write markdown file
+        File.write(output_file, markdown_content)
+        
+        puts "✅ Successfully created #{output_file}"
+        puts "📄 Template documentation generated with #{count_sections(markdown_content)} sections"
+        
+      rescue => e
+        puts "❌ Error converting template to markdown: #{e.message}"
+        puts "   #{e.backtrace.first}" if options[:verbose]
+        exit 1
+      end
+    end
+
     desc "test", "Test git-template with a specific templated app"
     option :templated_app_path, type: :string, required: true, desc: "Path to templated app (e.g., examples/rails/rails8-juris)"
     def test
@@ -878,6 +920,148 @@ module GitTemplate
 
     def self.exit_on_failure?
       true
+    end
+
+    private
+
+    def convert_template_to_markdown(template_content, folder_path)
+      lines = template_content.lines
+      markdown_lines = []
+      current_section = nil
+      code_block = []
+      in_multiline_string = false
+      multiline_delimiter = nil
+      
+      # Extract folder name for title
+      folder_name = File.basename(folder_path)
+      
+      # Add header
+      markdown_lines << "# #{folder_name.split('-').map(&:capitalize).join(' ')} Template Documentation"
+      markdown_lines << ""
+      
+      # Extract initial comments as description
+      description_lines = []
+      lines.each do |line|
+        stripped = line.strip
+        if stripped.start_with?('#') && !stripped.start_with?('#~')
+          description_lines << stripped[1..-1].strip
+        elsif !stripped.empty? && !stripped.start_with?('#')
+          break
+        end
+      end
+      
+      if description_lines.any?
+        markdown_lines << description_lines.join("\n")
+        markdown_lines << ""
+      end
+      
+      lines.each do |line|
+        stripped = line.strip
+        
+        # Check for phase markers
+        if stripped.start_with?('#~')
+          # Finish previous code block if exists
+          if code_block.any?
+            markdown_lines << "```ruby"
+            markdown_lines.concat(code_block)
+            markdown_lines << "```"
+            markdown_lines << ""
+            code_block = []
+          end
+          
+          # Start new section
+          phase_name = stripped[2..-1].strip
+          current_section = phase_name
+          markdown_lines << "## #{phase_name}"
+          markdown_lines << ""
+          markdown_lines << "*#{humanize_phase_name(phase_name)}*"
+          markdown_lines << ""
+          
+        elsif !stripped.empty? && !stripped.start_with?('#') && current_section
+          # Add code to current block
+          code_block << line.rstrip
+          
+        elsif stripped.empty? && code_block.any?
+          # Empty line in code block
+          code_block << ""
+          
+        elsif !stripped.start_with?('#~') && !stripped.start_with?('#') && !current_section && !stripped.empty?
+          # Code before any phase markers
+          if code_block.empty?
+            markdown_lines << "## Template Overview"
+            markdown_lines << ""
+          end
+          code_block << line.rstrip
+        end
+      end
+      
+      # Finish final code block
+      if code_block.any?
+        markdown_lines << "```ruby"
+        markdown_lines.concat(code_block)
+        markdown_lines << "```"
+        markdown_lines << ""
+      end
+      
+      # Add footer with phase explanation
+      markdown_lines << "## Template Phase Structure"
+      markdown_lines << ""
+      markdown_lines << "This template follows the git-template specialized phase architecture:"
+      markdown_lines << ""
+      markdown_lines << "- **010_PHASE**: Ruby version and basic configuration"
+      markdown_lines << "- **030_PHASE**: Gem dependencies and bundler setup"
+      markdown_lines << "- **040_PHASE**: UI, views, and styling configuration"
+      markdown_lines << "- **050_PHASE**: Testing framework setup"
+      markdown_lines << "- **100_PHASE**: Application features and functionality"
+      markdown_lines << "- **900_PHASE**: Completion messages and next steps"
+      markdown_lines << ""
+      markdown_lines << "Each phase has a specific responsibility, making the template organized, maintainable, and easy to iterate on during development."
+      
+      markdown_lines.join("\n")
+    end
+    
+    def humanize_phase_name(phase_name)
+      # Convert phase names to human-readable descriptions
+      case phase_name
+      when /010_PHASE/
+        "Ruby version and basic configuration phase"
+      when /030_PHASE.*GemBundle.*Development.*Test/
+        "Development and test gem configuration"
+      when /030_PHASE.*GemBundle.*Development/
+        "Development-only gem configuration"
+      when /030_PHASE.*GemBundle/
+        "Gem bundle configuration"
+      when /040_PHASE.*View.*Markup/
+        "Application layout and markup improvements"
+      when /040_PHASE.*View.*Styling/
+        "Basic styling and CSS setup"
+      when /040_PHASE.*View/
+        "View and UI configuration"
+      when /050_PHASE.*Test/
+        "Testing framework setup"
+      when /100_PHASE.*Feature.*Home.*Controller/
+        "Home page controller generation"
+      when /100_PHASE.*Feature.*Home.*Route/
+        "Root route configuration"
+      when /100_PHASE.*Feature.*Home.*View/
+        "Welcome page view creation"
+      when /100_PHASE.*Feature.*Post.*Model.*Migrate/
+        "Database migration execution"
+      when /100_PHASE.*Feature.*Post.*Model.*Seed/
+        "Sample data seeding"
+      when /100_PHASE.*Feature.*Post.*Model/
+        "Post model generation"
+      when /100_PHASE.*Feature/
+        "Application feature implementation"
+      when /900_PHASE.*Complete/
+        "Template completion and next steps"
+      else
+        phase_name.gsub('_', ' ').downcase + " phase"
+      end
+    end
+    
+    def count_sections(markdown_content)
+      markdown_content.scan(/^## /).length
     end
 
     private
