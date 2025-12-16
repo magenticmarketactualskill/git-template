@@ -2,26 +2,43 @@ module GitTemplate
   module TemplateGenerators
     class GemBundleGenerator
       def self.execute
-        raise "Must override"
-=begin
-        say "#~ 030_PHASE_GemBundle_Development_Test"
-        say "Adding development and test gems..."
+        raise "Must override - implement data_module method"
+      end
+
+      def self.install_gem_groups
+        data = data_module
         
-        gem_group :development, :test do
-          gem 'rspec-rails' unless File.read('Gemfile').include?('rspec-rails')
-          gem 'factory_bot_rails'
-          gem 'faker'
+        if data.const_defined?(:DEVELOPMENT_TEST_GEMS)
+          install_gem_group(
+            [:development, :test], 
+            data::DEVELOPMENT_TEST_GEMS, 
+            data::DEVELOPMENT_TEST_GEMS_MESSAGE
+          )
         end
         
-        say "#~ 030_PHASE_GemBundle_Development"
-        say "Adding development gems..."
-        
-        gem_group :development do
-          gem 'annotate' unless File.read('Gemfile').include?('annotate')
-          gem 'better_errors'
-          gem 'binding_of_caller'
+        if data.const_defined?(:DEVELOPMENT_GEMS)
+          install_gem_group(
+            [:development], 
+            data::DEVELOPMENT_GEMS, 
+            data::DEVELOPMENT_GEMS_MESSAGE
+          )
         end
-=end
+      end
+
+      private
+
+      def self.data_module
+        raise "Must override - return the data module"
+      end
+
+      def self.install_gem_group(groups, gems, message)
+        say message if message
+        
+        gem_group(*groups) do
+          gems.each do |gem_name|
+            gem gem_name unless File.read('Gemfile').include?(gem_name)
+          end
+        end
       end
     end
   end
