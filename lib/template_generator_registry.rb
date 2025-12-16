@@ -5,10 +5,10 @@
 # and dependencies, and provides module metadata and path resolution.
 
 class ModuleRegistry
-  attr_reader :template_root, :discovered_modules, :phase_modules
+  attr_reader :module_registry, :discovered_modules, :phase_modules
 
-  def initialize(template_root = "template")
-    @template_root = template_root
+  def initialize(module_registry = "module_registry")
+    @module_registry = module_registry
     @discovered_modules = {}
     @phase_modules = {}
   end
@@ -17,7 +17,7 @@ class ModuleRegistry
     @discovered_modules.clear
     @phase_modules.clear
     
-    if Dir.exist?(@template_root)
+    if Dir.exist?(@module_registry)
       scan_phase_folders
     else
       # Fallback to legacy flat structure
@@ -69,7 +69,7 @@ class ModuleRegistry
   end
 
   def scan_phase_folders
-    phase_folders = Dir.glob(File.join(@template_root, '*')).select { |f| File.directory?(f) }
+    phase_folders = Dir.glob(File.join(@module_registry, '*')).select { |f| File.directory?(f) }
     
     phase_folders.each do |phase_folder|
       phase_name = File.basename(phase_folder)
@@ -89,12 +89,12 @@ class ModuleRegistry
     # Ensure module_name has .rb extension
     module_name = "#{module_name}.rb" unless module_name.end_with?('.rb')
     
-    File.join(@template_root, phase, module_name)
+    File.join(@module_registry, phase, module_name)
   end
 
   # Support for extensibility - add new phases
   def add_phase_folder(phase_name)
-    phase_path = File.join(@template_root, phase_name)
+    phase_path = File.join(@module_registry, phase_name)
     Dir.mkdir(phase_path) unless Dir.exist?(phase_path)
     phase_path
   end
@@ -133,7 +133,7 @@ class ModuleRegistry
     # Extract phase name from path like "template/platform/ruby_version.rb"
     path_parts = path.split('/')
     
-    if path_parts.length >= 2 && path_parts[0] == @template_root
+    if path_parts.length >= 2 && path_parts[0] == @module_registry
       path_parts[1]
     else
       'unknown'
