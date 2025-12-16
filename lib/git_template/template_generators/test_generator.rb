@@ -1,11 +1,8 @@
 module GitTemplate
   module TemplateGenerators
-    module TestGenerator
+    class TestGenerator
       def self.execute
-        say "#~ 050_PHASE_Test"
-        say "Setting up RSpec testing framework..."
-        
-        generate 'rspec:install'
+        raise "Must override"
       end
     end
   end
