@@ -232,6 +232,9 @@ module GitTemplate
         puts "\n6️⃣ Running git-template and capturing changes..."
         log.puts "\n6️⃣ Running git-template and capturing changes..."
         
+        # Initialize template_result variable before Dir.chdir block
+        template_result = false
+        
         Dir.chdir(dest_path) do
           # Initialize git repo if not exists
           unless File.directory?(".git")
@@ -263,7 +266,6 @@ module GitTemplate
           log.puts template_msg
           
           # Run the template (assuming it's a Rails app)
-          template_result = false
           if File.exist?("bin/rails")
             # Set environment variables to make template non-interactive
             env_vars = {
@@ -273,7 +275,9 @@ module GitTemplate
               "TEMPLATE_USE_DOCKER" => "false",
               "TEMPLATE_GENERATE_SAMPLE_MODELS" => "false",
               "TEMPLATE_SETUP_ADMIN" => "false",
-              "THOR_MERGE" => "true"  # Auto-overwrite files without prompting
+              "THOR_MERGE" => "true",  # Auto-overwrite files without prompting
+              "THOR_SHELL" => "Basic",  # Use basic shell (non-interactive)
+              "RAILS_ENV" => "development"  # Ensure consistent environment
             }
             
             puts "Environment variables:"
@@ -426,6 +430,7 @@ module GitTemplate
       
       begin
         # Use PTY to handle interactive prompts
+        success = false
         PTY.spawn(env_vars, command) do |stdout, stdin, pid|
           output_buffer = ""
           
@@ -462,8 +467,8 @@ module GitTemplate
           success = $?.success?
           puts "\n🎯 Template execution completed with status: #{success}"
           log.puts "🎯 Template execution completed with status: #{success}"
-          success
         end
+        return success
       rescue PTY::ChildExited => e
         puts "Template process exited: #{e.status}"
         log.puts "Template process exited: #{e.status}"

@@ -48,29 +48,27 @@ say "\nStarting template application...\n", :green
 # Add essential gems
 say "Adding essential gems...", :green
 
-# Development and test gems
-gem_group :development, :test do
-  # Only add debug if not already present
-  gem "debug", platforms: %i[ mri windows ] unless gem_exists?("debug")
-  gem "rspec-rails" if @setup_testing
-  gem "factory_bot_rails" if @setup_testing
-  gem "faker" if @setup_testing
+# Development and test gems - only add if not already present
+gem "debug", platforms: %i[ mri windows ], group: [:development, :test] unless gem_exists?("debug")
+
+if @setup_testing
+  gem "rspec-rails", group: [:development, :test] unless gem_exists?("rspec-rails")
+  gem "factory_bot_rails", group: [:development, :test] unless gem_exists?("factory_bot_rails")
+  gem "faker", group: [:development, :test] unless gem_exists?("faker")
 end
 
-gem_group :development do
-  # Only add web-console if not already present
-  gem "web-console" unless gem_exists?("web-console")
-end
+# Only add web-console if not already present
+gem "web-console", group: :development unless gem_exists?("web-console")
 
 # Add authentication if requested
 if @use_authentication
-  gem "devise"
+  gem "devise" unless gem_exists?("devise")
 end
 
 # Add Bootstrap if requested
 if @use_bootstrap
-  gem "bootstrap", "~> 5.3"
-  gem "sassc-rails"
+  gem "bootstrap", "~> 5.3" unless gem_exists?("bootstrap")
+  gem "sassc-rails" unless gem_exists?("sassc-rails")
 end
 
 # Run bundle install
