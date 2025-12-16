@@ -1,5 +1,4 @@
 require_relative "git_template/version"
-require_relative "git_template/cli"
 require_relative "git_template/template_resolver"
 require_relative "git_template/gem_template_runner"
 
@@ -24,3 +23,6 @@ module GitTemplate
     TemplateResolver.gem_template_path
   end
 end
+
+# Load CLI after the base module is defined
+require_relative "git_template/cli"

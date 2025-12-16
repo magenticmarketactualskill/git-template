@@ -1,4 +1,9 @@
 require "thor"
+require_relative "commands/status_command"
+require_relative "commands/clone_command"
+require_relative "commands/iterate_command"
+require_relative "commands/update_command"
+require_relative "commands/push_command"
 
 module GitTemplate
   class CLI < Thor
@@ -64,6 +69,143 @@ module GitTemplate
     desc "path", "Show path to bundled template"
     def path
       puts TemplateResolver.gem_template_path
+    end
+
+    # New status command system commands
+    desc "status FOLDER", "Check the status of application folders for template development"
+    option :format, type: :string, default: "detailed", desc: "Output format: detailed, summary, json"
+    option :verbose, type: :boolean, default: false, desc: "Show verbose output"
+    option :debug, type: :boolean, default: false, desc: "Show debug information"
+    def status(folder_path)
+      setup_environment(options)
+      
+      begin
+        command = Commands::StatusCommand.new
+        result = command.execute(folder_path, options.to_h.symbolize_keys)
+        
+        if result[:success]
+          puts result[:report] if result[:report]
+          puts result[:summary] if result[:summary] && !result[:report]
+        else
+          handle_command_error("status", result)
+        end
+      rescue => e
+        handle_unexpected_command_error("status", e, options)
+      end
+    end
+
+    desc "clone GIT_URL [TARGET_FOLDER]", "Clone remote applications for template development"
+    option :branch, type: :string, desc: "Specific branch to clone"
+    option :depth, type: :numeric, desc: "Create shallow clone with specified depth"
+    option :quiet, type: :boolean, default: false, desc: "Suppress output"
+    option :create_template_config, type: :boolean, default: false, desc: "Create basic template configuration"
+    option :debug, type: :boolean, default: false, desc: "Show debug information"
+    def clone(git_url, target_folder = nil)
+      setup_environment(options)
+      validate_command_prerequisites
+      
+      begin
+        command = Commands::CloneCommand.new
+        result = command.execute(git_url, target_folder, options.to_h.symbolize_keys)
+        
+        if result[:success]
+          puts "✅ Successfully cloned #{result[:git_url]} to #{result[:target_path]}"
+        else
+          handle_command_error("clone", result)
+        end
+      rescue => e
+        handle_unexpected_command_error("clone", e, options)
+      end
+    end
+
+    desc "iterate FOLDER", "Iterate on templates to refine accuracy through comparison"
+    option :detailed_comparison, type: :boolean, default: false, desc: "Show detailed comparison results"
+    option :create_templated_folder, type: :boolean, default: false, desc: "Create templated folder if it doesn't exist"
+    option :verbose, type: :boolean, default: false, desc: "Show verbose output"
+    option :debug, type: :boolean, default: false, desc: "Show debug information"
+    def iterate(folder_path)
+      setup_environment(options)
+      
+      begin
+        command = Commands::IterateCommand.new
+        result = command.execute(folder_path, options.to_h.symbolize_keys)
+        
+        if result[:success]
+          puts "✅ Template iteration completed"
+          puts "   Application folder: #{result[:application_folder]}"
+          puts "   Templated folder: #{result[:templated_folder]}"
+          puts "   Template applied: #{result[:template_applied] ? 'Yes' : 'No'}"
+          puts "   Differences found: #{result[:differences_count]} changes"
+          puts "   Cleanup updated: #{result[:cleanup_updated] ? 'Yes' : 'No'}"
+        else
+          handle_command_error("iterate", result)
+        end
+      rescue => e
+        handle_unexpected_command_error("iterate", e, options)
+      end
+    end
+
+    desc "update FOLDER", "Update templates to incorporate refinements and maintain accuracy"
+    option :refresh_structure, type: :boolean, default: false, desc: "Refresh template structure analysis"
+    option :fix_issues, type: :boolean, default: false, desc: "Fix common template issues"
+    option :update_metadata, type: :boolean, default: false, desc: "Update template metadata"
+    option :all, type: :boolean, default: false, desc: "Perform all update operations"
+    option :verbose, type: :boolean, default: false, desc: "Show verbose output"
+    option :debug, type: :boolean, default: false, desc: "Show debug information"
+    def update(folder_path)
+      setup_environment(options)
+      
+      begin
+        command = Commands::UpdateCommand.new
+        result = command.execute(folder_path, options.to_h.symbolize_keys)
+        
+        if result[:success]
+          puts "✅ Template update completed"
+          puts "   Operations performed: #{result[:operations_performed].length}"
+          result[:operations_performed].each { |op| puts "   - #{op}" }
+          
+          validation = result[:validation_result]
+          puts "   Template valid: #{validation[:valid] ? 'Yes' : 'No'}"
+          if validation[:validation_errors].any?
+            puts "   Validation errors:"
+            validation[:validation_errors].each { |error| puts "     - #{error}" }
+          end
+        else
+          handle_command_error("update", result)
+        end
+      rescue => e
+        handle_unexpected_command_error("update", e, options)
+      end
+    end
+
+    desc "push FOLDER [REMOTE_URL]", "Push application folders to remote repositories"
+    option :remote_name, type: :string, default: "origin", desc: "Remote name to use"
+    option :branch, type: :string, desc: "Branch to push"
+    option :commit_changes, type: :boolean, default: false, desc: "Commit changes before pushing"
+    option :commit_message, type: :string, desc: "Commit message to use"
+    option :initialize_if_needed, type: :boolean, default: false, desc: "Initialize git repository if needed"
+    option :force, type: :boolean, default: false, desc: "Force push"
+    option :verbose, type: :boolean, default: false, desc: "Show verbose output"
+    option :debug, type: :boolean, default: false, desc: "Show debug information"
+    def push(folder_path, remote_url = nil)
+      setup_environment(options)
+      validate_command_prerequisites
+      
+      begin
+        command = Commands::PushCommand.new
+        result = command.execute(folder_path, remote_url, options.to_h.symbolize_keys)
+        
+        if result[:success]
+          puts "✅ Successfully pushed #{result[:folder_path]}"
+          puts "   Remote URL: #{result[:remote_url]}" if result[:remote_url]
+          puts "   Repository initialized: Yes" if result[:repository_initialized]
+          puts "   Changes committed: Yes" if result[:changes_committed]
+        else
+          handle_command_error("push", result)
+        end
+      rescue => e
+        handle_unexpected_command_error("push", e, options)
+      end
     end
 
     desc "test", "Test git-template with a specific templated app"
@@ -864,6 +1006,47 @@ module GitTemplate
       end
     end
 
+    private
+
+    def setup_environment(options)
+      ENV['VERBOSE'] = '1' if options[:verbose]
+      ENV['DEBUG'] = '1' if options[:debug]
+    end
+
+    def handle_command_error(command_name, result)
+      puts "❌ #{command_name.capitalize} command failed:"
+      puts "   #{result[:error]}"
+      
+      if result[:error_type] && ENV['DEBUG']
+        puts "   Error type: #{result[:error_type]}"
+      end
+      
+      exit 1
+    end
+
+    def handle_unexpected_command_error(command_name, error, options)
+      puts "❌ Unexpected error in #{command_name} command:"
+      puts "   #{error.message}"
+      
+      if options[:debug] || ENV['DEBUG']
+        puts "\nBacktrace:"
+        puts error.backtrace.join("\n")
+      else
+        puts "\nRun with --debug for more details"
+      end
+      
+      exit 1
+    end
+
+    def validate_command_prerequisites
+      # Check if git is available
+      unless system('git --version > /dev/null 2>&1')
+        puts "❌ Error: git is not installed or not available in PATH"
+        puts "   Please install git to use git-template commands"
+        exit 1
+      end
+    end
+
     # Default action when no command is specified
     def self.start(args)
       if args.empty?
@@ -871,6 +1054,11 @@ module GitTemplate
         puts ""
         puts "Usage:"
         puts "  git-template apply [PATH]     # Apply template to existing Rails app"
+        puts "  git-template status FOLDER    # Check template development status"
+        puts "  git-template clone GIT_URL    # Clone repository for template development"
+        puts "  git-template iterate FOLDER   # Iterate and refine templates"
+        puts "  git-template update FOLDER    # Update template configuration"
+        puts "  git-template push FOLDER      # Push to remote repository"
         puts "  git-template version          # Show version"
         puts "  git-template list             # List available templates"
         puts "  git-template path             # Show template path"

@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+
+# Integration Test Runner for Git Template Status Command System
+#
+# This script runs basic integration tests to verify that the status command
+# system components work together correctly.
+
+require_relative '../lib/git_template/integration_test'
+
+puts "Git Template Status Command System - Integration Test Runner"
+puts "=" * 60
+
+# Set up test environment
+ENV['DEBUG'] = '1' if ARGV.include?('--debug')
+ENV['VERBOSE'] = '1' if ARGV.include?('--verbose')
+
+begin
+  test_runner = GitTemplate::IntegrationTest.new
+  success = test_runner.run_all_tests
+  
+  if success
+    puts "\n🎉 All integration tests passed successfully!"
+    puts "The status command system is ready for use."
+    exit 0
+  else
+    puts "\n💥 Some integration tests failed."
+    puts "Please review the errors above and fix any issues."
+    exit 1
+  end
+  
+rescue => e
+  puts "\n💥 Integration test runner encountered an error:"
+  puts "   #{e.message}"
+  
+  if ENV['DEBUG']
+    puts "\nBacktrace:"
+    puts e.backtrace.join("\n")
+  end
+  
+  exit 1
+end
