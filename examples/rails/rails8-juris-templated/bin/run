@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-set -e
-
-echo "Building Vite assets..."
-bin/vite build --clear --mode=development
-
-echo "Starting Rails server on port 3200..."
-bundle exec rails s -p 3200
