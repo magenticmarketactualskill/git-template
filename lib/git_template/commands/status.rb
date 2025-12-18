@@ -7,6 +7,7 @@
 require_relative 'base'
 require_relative '../services/folder_analyzer'
 require_relative '../services/status_reporter'
+require_relative '../services/status_formatter'
 
 module GitTemplate
   module Command
@@ -41,7 +42,8 @@ module GitTemplate
                 when "json"
                   puts JSON.pretty_generate(result)
                 when "summary"
-                  puts format_summary_status(result)
+                  status_formatter = Services::StatusFormatter.new
+                  puts status_formatter.format_summary_status(result)
                 else
                   puts result[:report]
                 end
@@ -102,20 +104,7 @@ module GitTemplate
             }
           end
           
-          define_method :format_summary_status do |result|
-            summary = result[:summary]
-            output = []
-            
-            output << "Folder: #{summary[:folder]}"
-            output << "Status: #{summary[:status]}"
-            output << "Exists: #{summary[:exists] ? '✅' : '❌'}"
-            output << "Git repository: #{summary[:git_repository] ? '✅' : '❌'}"
-            output << "Template configuration: #{summary[:template_configuration] ? '✅' : '❌'}"
-            output << "Templated folder: #{summary[:templated_folder] ? '✅' : '❌'}"
-            output << "Ready for iteration: #{summary[:ready_for_iteration] ? '✅' : '❌'}"
-            
-            output.join("\n")
-          end
+
         end
       end
     end
