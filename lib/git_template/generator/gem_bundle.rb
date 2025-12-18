@@ -1,8 +1,8 @@
-require_relative 'base_generator'
+require_relative 'base'
 
 module GitTemplate
-  module TemplateGenerators
-    class GemBundleGenerator < BaseGenerator
+  module Generators
+    class GemBundle < Base
       def self.execute
         raise "Must override - implement data_module method"
       end

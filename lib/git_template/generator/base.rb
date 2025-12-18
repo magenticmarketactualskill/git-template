@@ -1,6 +1,6 @@
 module GitTemplate
-  module TemplateGenerators
-    class BaseGenerator
+  module Generators
+    class Base
       def self.execute
         raise "Must override"
       end

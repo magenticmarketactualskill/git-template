@@ -1,8 +1,8 @@
-require_relative 'base_generator'
+require_relative 'base'
 
 module GitTemplate
-  module TemplateGenerators
-    class ViewGenerator < BaseGenerator
+  module Generators
+    class View < Base
       def self.execute
         execute_with_messages do |data, messages|
           # File replacements

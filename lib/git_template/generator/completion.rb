@@ -1,8 +1,8 @@
-require_relative 'base_generator'
+require_relative 'base'
 
 module GitTemplate
-  module TemplateGenerators
-    class CompletionGenerator < BaseGenerator
+  module Generators
+    class Completion < Base
       def self.execute
         text_data.each do |line_data|
           if line_data.length == 1

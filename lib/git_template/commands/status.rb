@@ -28,8 +28,11 @@ module GitTemplate
                 
                 # Validate and analyze folder
                 validated_path = validate_directory_path(folder_path, must_exist: false)
-                analysis_data = analyze_folder_status(validated_path)
+                folder_analysis_data = analyze_folder_status(validated_path)
                 
+                iteration_analysis = analyze_folder_for_iteration(validated_path, folder_analyzer)
+                iteration_strategy = determine_iteration_strategy(analysis, options)
+
                 # Generate and output report
                 result = generate_status_report(analysis_data, options)
                 

@@ -1,8 +1,8 @@
-require_relative 'base_generator'
+require_relative 'base'
 
 module GitTemplate
-  module TemplateGenerators
-    class PostFeatureGenerator < BaseGenerator
+  module Generators
+    class PostFeature < Base
       def self.execute
         execute_with_messages do |data, messages|
           # Model generation

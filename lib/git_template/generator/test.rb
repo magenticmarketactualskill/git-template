@@ -1,8 +1,8 @@
-require_relative 'base_generator'
+require_relative 'base'
 
 module GitTemplate
-  module TemplateGenerators
-    class TestGenerator < BaseGenerator
+  module Generators
+    class Test < Base
       def self.execute
         execute_with_messages do |data, messages|
           say_next_message(messages, "Setting up testing framework...")
