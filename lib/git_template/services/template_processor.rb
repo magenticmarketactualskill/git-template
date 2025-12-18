@@ -5,7 +5,7 @@
 
 require 'fileutils'
 require 'tmpdir'
-require_relative '../models/comparison_result'
+require_relative '../models/result/comparison_result'
 require_relative '../models/template_configuration'
 require_relative '../status_command_errors'
 
@@ -50,7 +50,7 @@ module GitTemplate
 
       def compare_folders(source_path, target_path)
         begin
-          Models::ComparisonResult.new(source_path, target_path)
+          Models::Result::ComparisonResult.new(source_path, target_path)
         rescue => e
           raise TemplateProcessingError.new('compare_folders', e.message)
         end

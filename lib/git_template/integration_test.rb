@@ -163,7 +163,7 @@ module GitTemplate
 
     def test_comparison_result
       test_case("Comparison Result Model") do
-        require_relative 'models/comparison_result'
+        require_relative 'models/result/comparison_result'
         
         # Create two test directories with different content
         source_dir = create_temp_directory("comparison_source")
@@ -177,7 +177,7 @@ module GitTemplate
         File.write(File.join(target_dir, 'file2.txt'), 'different_content2')
         File.write(File.join(target_dir, 'file3.txt'), 'content3')
         
-        comparison = Models::ComparisonResult.new(source_dir, target_dir)
+        comparison = Models::Result::ComparisonResult.new(source_dir, target_dir)
         
         unless comparison.has_differences?
           raise "Expected comparison to find differences"

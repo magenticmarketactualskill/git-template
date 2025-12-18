@@ -4,7 +4,7 @@
 # including detection of template configurations, git repositories,
 # and corresponding templated folders.
 
-require_relative '../models/folder_analysis'
+require_relative '../models/result/folder_analysis'
 require_relative '../models/template_configuration'
 require_relative '../models/templater_folder'
 require_relative '../status_command_errors'
@@ -20,7 +20,7 @@ module GitTemplate
 
       def analyze_folder(path)
         begin
-          Models::FolderAnalysis.new(path)
+          Models::Result::FolderAnalysis.new(path)
         rescue => e
           raise FolderAnalysisError.new(path, e.message)
         end

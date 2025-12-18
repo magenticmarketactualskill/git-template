@@ -5,12 +5,13 @@
 # related templated folder information.
 
 require 'fileutils'
-require_relative '../status_command_errors'
-require_relative 'templater_folder'
+require_relative '../../status_command_errors'
+require_relative '../templater_folder'
 
 module GitTemplate
   module Models
-    class FolderAnalysis
+    module Result
+      class FolderAnalysis
       include StatusCommandErrors
 
       attr_reader :path, :exists, :is_git_repository, :has_template_configuration,
@@ -51,6 +52,7 @@ module GitTemplate
         rescue => e
           raise FolderAnalysisError.new(@path, e.message)
         end
+      end
       end
     end
   end

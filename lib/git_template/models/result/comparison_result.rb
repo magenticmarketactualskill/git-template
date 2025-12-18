@@ -5,27 +5,27 @@
 
 require 'fileutils'
 require 'digest'
-require_relative '../status_command_errors'
+require_relative 'base'
 
 module GitTemplate
   module Models
-    class ComparisonResult
-      include StatusCommandErrors
+    module Result
+      class ComparisonResult < Base
+        attr_reader :source_path, :target_path, :added_files, :modified_files, 
+                    :deleted_files, :differences, :comparison_timestamp
 
-      attr_reader :source_path, :target_path, :added_files, :modified_files, 
-                  :deleted_files, :differences, :comparison_timestamp
-
-      def initialize(source_path, target_path)
-        @source_path = File.expand_path(source_path)
-        @target_path = File.expand_path(target_path)
-        @comparison_timestamp = Time.now
-        @added_files = []
-        @modified_files = []
-        @deleted_files = []
-        @differences = []
-        
-        perform_comparison
-      end
+        def initialize(source_path, target_path)
+          super()
+          @source_path = expand_path(source_path)
+          @target_path = expand_path(target_path)
+          @comparison_timestamp = @timestamp
+          @added_files = []
+          @modified_files = []
+          @deleted_files = []
+          @differences = []
+          
+          perform_comparison
+        end
 
       def has_differences?
         !(@added_files.empty? && @modified_files.empty? && @deleted_files.empty?)
@@ -148,6 +148,7 @@ module GitTemplate
         end
         
         diffs
+      end
       end
     end
   end
