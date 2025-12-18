@@ -11,6 +11,7 @@ require_relative "commands/rerun_template"
 require_relative "commands/recreate_repo"
 require_relative "commands/remove_repo"
 require_relative "commands/create_templated_folder_public"
+require_relative "commands/regenerate_template"
 
 module GitTemplate
   class CLI < Thor
@@ -25,6 +26,7 @@ module GitTemplate
     include GitTemplate::Command::RecreateRepo
     include GitTemplate::Command::RemoveRepo
     include GitTemplate::Command::CreateTemplatedFolderPublic
+    include GitTemplate::Command::RegenerateTemplate
     
     def initialize(*args)
       super
