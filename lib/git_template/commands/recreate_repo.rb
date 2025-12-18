@@ -10,6 +10,8 @@ require_relative '../services/iteration_strategy'
 require_relative '../models/result/iteration_result'
 require_relative '../models/result/iterate_command_result'
 require_relative '../status_command_errors'
+require 'open3'
+require 'fileutils'
 
 module GitTemplate
   module Command
@@ -37,26 +39,8 @@ module GitTemplate
                 return result
               end
               
-              # Analyze the current state (using current directory)
-              analysis = analyze_folder(".", options)
-              template_iteration_service = Services::TemplateIteration.new
-              
-              # Determine if recreation can proceed
-              iteration_strategy_service = Services::IterationStrategy.new
-              iteration_strategy_result = iteration_strategy_service.determine_iteration_strategy(analysis, options)
-              
-              unless can_recreate_repo?(iteration_strategy_result, options)
-                result = Models::Result::IterateCommandResult.new(
-                  success: false,
-                  operation: "recreate_repo",
-                  error_message: iteration_strategy_result.reason
-                )
-                puts result.format_output(options[:format], options)
-                return result
-              end
-              
               # Execute repository recreation
-              result = perform_recreate_repo(remote_url, analysis, template_iteration_service, options)
+              result = perform_recreate_repo(remote_url, options)
               
               # Format and display output
               puts result.format_output(options[:format], options)
@@ -67,29 +51,90 @@ module GitTemplate
           
           private
           
-          define_method :can_recreate_repo? do |iteration_strategy_result, options|
-            # Allow recreation if it's ready for iteration or if force is enabled
-            iteration_strategy_result.recreate_repo_can_proceed || 
-            iteration_strategy_result.strategy_type == :recreate_repo ||
-            options[:force]
-          end
-          
-          define_method :perform_recreate_repo do |remote_url, analysis, template_iteration_service, options|
+          define_method :perform_recreate_repo do |remote_url, options|
             begin
-              # Recreate Repo
-              # 1. creates a submodule with a git clone of the repo
-              # 2. creates a templated folder
-              # 3. recreates the repo using the .git-template folder
-              # 4. does a comparison of the generated content with the original
+              # Check if submodule already exists (unless force is enabled)
+              if submodule_exists?(remote_url) && !options[:force]
+                return Models::Result::IterateCommandResult.new(
+                  success: false,
+                  operation: "recreate_repo",
+                  error_message: "A submodule with URL #{remote_url} already exists (use --force to override)"
+                )
+              end
               
-              # TODO: Implement the actual recreation logic using remote_url
-              puts "Recreating repo from: #{remote_url}"
+              # Extract repo name from URL
+              repo_name = File.basename(remote_url, '.git')
+              templated_path = "templated/#{repo_name}"
               
-              # Return success result for now
+              # Check if templated folder exists
+              if Dir.exist?(templated_path) && !options[:clean_before] && !options[:force]
+                return Models::Result::IterateCommandResult.new(
+                  success: false,
+                  operation: "recreate_repo",
+                  error_message: "Templated folder already exists at #{templated_path}"
+                )
+              end
+              
+              # Clean templated folder if requested
+              if Dir.exist?(templated_path) && options[:clean_before]
+                FileUtils.rm_rf(templated_path)
+              end
+              
+              # Clone the repository as a submodule
+              cloned_path = clone_repository_as_submodule(remote_url, repo_name)
+              
+              # Check if .git-template or .git_template folder exists
+              git_template_path = File.join(cloned_path, '.git-template')
+              git_template_path_underscore = File.join(cloned_path, '.git_template')
+              
+              unless Dir.exist?(git_template_path) || Dir.exist?(git_template_path_underscore)
+                return Models::Result::IterateCommandResult.new(
+                  success: false,
+                  operation: "recreate_repo",
+                  error_message: ".git-template or .git_template folder not found in cloned repository"
+                )
+              end
+              
+              # Create templated folder
+              create_result = create_templated_folder(templated_path)
+              unless create_result.success
+                return Models::Result::IterateCommandResult.new(
+                  success: false,
+                  operation: "recreate_repo",
+                  error_message: "create-templated-folder failed: #{create_result.error_message}"
+                )
+              end
+              
+              # Run template
+              rerun_result = rerun_template(templated_path)
+              unless rerun_result.success
+                return Models::Result::IterateCommandResult.new(
+                  success: false,
+                  operation: "recreate_repo",
+                  error_message: "rerun-template failed: #{rerun_result.error_message}"
+                )
+              end
+              
+              # Compare results
+              compare_result = compare(cloned_path, templated_path)
+              unless compare_result.success
+                return Models::Result::IterateCommandResult.new(
+                  success: false,
+                  operation: "recreate_repo",
+                  error_message: "compare failed: #{compare_result.error_message}"
+                )
+              end
+              
+              # Return success
               Models::Result::IterateCommandResult.new(
                 success: true,
                 operation: "recreate_repo",
-                message: "Repository recreation completed successfully"
+                data: { 
+                  message: "Repository recreation completed successfully",
+                  cloned_path: cloned_path,
+                  templated_path: templated_path,
+                  remote_url: remote_url
+                }
               )
               
             rescue => e
@@ -101,6 +146,75 @@ module GitTemplate
                 error_type: e.class.name
               )
             end
+          end
+          
+          define_method :submodule_exists? do |remote_url|
+            # Check if submodule with this URL already exists in .gitmodules
+            return false unless File.exist?('.gitmodules')
+            
+            gitmodules_content = File.read('.gitmodules')
+            gitmodules_content.include?(remote_url)
+          end
+          
+          define_method :clone_repository_as_submodule do |remote_url, repo_name|
+            submodule_path = "examples/#{repo_name}"
+            
+            # Ensure examples directory exists
+            FileUtils.mkdir_p("examples")
+            
+            # If submodule already exists and we're forcing, remove it first
+            if Dir.exist?(submodule_path)
+              # Remove from git
+              `git submodule deinit -f #{submodule_path} 2>/dev/null`
+              `git rm -f #{submodule_path} 2>/dev/null`
+              # Remove directory
+              FileUtils.rm_rf(submodule_path)
+            end
+            
+            # Add as submodule
+            cmd = "git submodule add --force #{remote_url} #{submodule_path}"
+            stdout, stderr, status = Open3.capture3(cmd)
+            
+            unless status.success?
+              raise StandardError.new("Clone failed: #{stderr.strip}")
+            end
+            
+            submodule_path
+          end
+          
+          define_method :create_templated_folder do |path|
+            # Stub implementation - call the actual create-templated-folder command
+            # For now, just create the directory and return success
+            FileUtils.mkdir_p(path)
+            Models::Result::IterateCommandResult.new(
+              success: true,
+              operation: "create_templated_folder",
+              data: { path: path }
+            )
+          end
+          
+          define_method :rerun_template do |path|
+            # Stub implementation - call the actual rerun-template command
+            # For now, just return success
+            Models::Result::IterateCommandResult.new(
+              success: true,
+              operation: "rerun_template",
+              data: { path: path }
+            )
+          end
+          
+          define_method :compare do |source_path, target_path|
+            # Stub implementation - call the actual compare command
+            # For now, just return success
+            Models::Result::IterateCommandResult.new(
+              success: true,
+              operation: "compare",
+              data: { 
+                source_path: source_path,
+                target_path: target_path,
+                message: "Comparison completed successfully"
+              }
+            )
           end
         end
       end

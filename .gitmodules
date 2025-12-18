@@ -9,3 +9,6 @@
 [submodule "examples/rails/rails8-simple"]
 	path = examples/rails/rails8-simple
 	url = https://github.com/magenticmarketactualskill/rails8-simple.git
+[submodule "examples/rails8-simple"]
+	path = examples/rails8-simple
+	url = https://github.com/magenticmarketactualskill/rails8-simple.git
