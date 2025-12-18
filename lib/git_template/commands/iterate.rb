@@ -54,7 +54,7 @@ module GitTemplate
               when :repo_iteration
                 result = recreate_repo(analysis, options)
               when :create_templated_folder
-                result = create_templated_folder(analysis, template_processor, options)
+                result = iterate_create_templated_folder(analysis, template_processor, options)
               when :template_iteration
                 result = rerun_template(analysis, template_processor, options)
               else
@@ -70,7 +70,7 @@ module GitTemplate
           
           private
           
-          define_method :create_templated_folder do |analysis, template_processor, options|
+          define_method :iterate_create_templated_folder do |analysis, template_processor, options|
             folder_path = analysis[:folder_analysis].path
             
             # Create templated folder and copy configuration
@@ -94,6 +94,7 @@ module GitTemplate
             Models::Result::IterationResult.new(iteration_data)
           end
 
+          public
 
         end
       end

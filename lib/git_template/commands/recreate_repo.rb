@@ -182,16 +182,7 @@ module GitTemplate
             submodule_path
           end
           
-          define_method :create_templated_folder do |path|
-            # Stub implementation - call the actual create-templated-folder command
-            # For now, just create the directory and return success
-            FileUtils.mkdir_p(path)
-            Models::Result::IterateCommandResult.new(
-              success: true,
-              operation: "create_templated_folder",
-              data: { path: path }
-            )
-          end
+
           
           define_method :rerun_template do |path|
             # Stub implementation - call the actual rerun-template command

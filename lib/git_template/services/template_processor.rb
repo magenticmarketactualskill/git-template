@@ -156,8 +156,7 @@ module GitTemplate
       def create_templated_folder(folder_path, options = {})
         begin
           # Logic to create templated folder structure
-          # This would typically involve copying the source folder structure
-          # and creating template configuration
+          # This copies the .git_template folder from the submodule to the templated subfolder
           
           templated_path = calculate_templated_path(folder_path)
           
@@ -170,14 +169,27 @@ module GitTemplate
           # Create the templated folder structure
           FileUtils.mkdir_p(templated_path)
           
-          # Create .git_template directory
-          git_template_dir = File.join(templated_path, '.git_template')
-          FileUtils.mkdir_p(git_template_dir)
+          # Look for .git_template directory in the source folder
+          source_git_template_dir = File.join(folder_path, '.git_template')
+          target_git_template_dir = File.join(templated_path, '.git_template')
           
-          # Create basic template.rb file
-          template_file = File.join(git_template_dir, 'template.rb')
-          template_content = options[:template_content] || generate_default_template_content(folder_path)
-          File.write(template_file, template_content)
+          if File.directory?(source_git_template_dir)
+            # Copy the entire .git_template directory from source to target
+            FileUtils.cp_r(source_git_template_dir, templated_path)
+            template_file = File.join(target_git_template_dir, 'template.rb')
+            
+            # Verify the template.rb file exists after copying
+            unless File.exist?(template_file)
+              raise TemplateProcessingError.new('create_templated_folder', 
+                "No template.rb found in copied .git_template directory")
+            end
+          else
+            # Fallback: Create .git_template directory with basic template.rb file
+            FileUtils.mkdir_p(target_git_template_dir)
+            template_file = File.join(target_git_template_dir, 'template.rb')
+            template_content = options[:template_content] || generate_default_template_content(folder_path)
+            File.write(template_file, template_content)
+          end
           
           Models::Result::IterateCommandResult.new(
             success: true,
@@ -187,7 +199,8 @@ module GitTemplate
               iteration_type: "create_templated_folder",
               templated_folder: templated_path,
               template_file: template_file,
-              source_folder: folder_path
+              source_folder: folder_path,
+              copied_from_source: File.directory?(source_git_template_dir)
             }
           )
         rescue => e
