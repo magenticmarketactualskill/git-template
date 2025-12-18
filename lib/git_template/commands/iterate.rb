@@ -18,14 +18,18 @@ module GitTemplate
       def self.included(base)
         base.class_eval do
           desc "iterate [PATH]", "Handle template iteration with configuration preservation"
-          option :detailed_comparison, type: :boolean, desc: "Generate detailed comparison report"
+          option :detailed_comparison, type: :boolean, default: true, desc: "Generate detailed comparison report"
           option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
+          option :verbose, type: :boolean, default: false, desc: "Show verbose output"
+          option :debug, type: :boolean, default: false, desc: "Show debug information"
+          option :force, type: :boolean, default: false, desc: "Force iteration even if prerequisites not fully met"
           
           define_method :iterate do |path = "."|
             execute_with_error_handling("iterate", options) do
               log_command_execution("iterate", [path], options)
               
               measure_execution_time do
+                setup_environment(options)
                 template_processor = Services::TemplateProcessor.new
                 folder_analyzer = Services::FolderAnalyzer.new
                 iteration_strategy_service = Services::IterationStrategy.new
@@ -38,7 +42,7 @@ module GitTemplate
                 iteration_strategy_result = iteration_strategy_service.determine_iteration_strategy(analysis, options)
                 
                 # Check if iteration can proceed
-                unless iteration_strategy_result.can_proceed
+                unless iteration_strategy_result.can_proceed || options[:force]
                   result = create_error_response("iterate", iteration_strategy_result.reason)
                   puts format_response_for_output(result, options)
                   return result
@@ -47,32 +51,55 @@ module GitTemplate
                 # Execute iteration based on strategy
                 case iteration_strategy_result.strategy_type
                 when :repo_iteration
-                  template_iteration_service = Services::TemplateIteration.new
-                  iteration_data = template_iteration_service.execute_repo_iteration(analysis, options)
-                  iteration_result = Models::Result::IterationResult.new(iteration_data)
-                  
-                  success_response = create_success_response("iterate", {
-                    folder_path: iteration_result.application_folder,
-                    iteration_type: "repo_iteration",
-                    result: iteration_result.summary
-                  })
-                  
-                  puts format_response_for_output(success_response, options)
-                  success_response
+                  result = execute_repo_iteration(analysis, options)
                 when :create_templated_folder
-                  execute_create_templated_folder(analysis, template_processor, options)
+                  result = execute_create_templated_folder(analysis, template_processor, options)
                 when :template_iteration
-                  execute_template_iteration(analysis, template_processor, options)
+                  result = execute_template_iteration_update(analysis, template_processor, options)
                 else
                   raise StatusCommandError.new("Cannot iterate: #{iteration_strategy_result.reason}")
                 end
+                
+                # Output based on format
+                case options[:format]
+                when "json"
+                  puts JSON.pretty_generate(result.is_a?(Models::Result::IterationResult) ? result.format_output("json", options) : result)
+                when "summary"
+                  if result.is_a?(Models::Result::IterationResult)
+                    puts format_iteration_summary(result)
+                  else
+                    puts format_response_for_output(result, options)
+                  end
+                else
+                  if result.is_a?(Models::Result::IterationResult)
+                    formatted_result = result.format_output("detailed", options)
+                    puts formatted_result[:data][:report]
+                  else
+                    puts format_response_for_output(result, options)
+                  end
+                end
+                
+                result
               end
             end
           end
           
           private
           
-
+          define_method :setup_environment do |opts|
+            ENV['VERBOSE'] = '1' if opts[:verbose]
+            ENV['DEBUG'] = '1' if opts[:debug]
+          end
+          
+          define_method :execute_repo_iteration do |analysis, options|
+            template_iteration_service = Services::TemplateIteration.new
+            
+            # Execute full iteration
+            iteration_data = template_iteration_service.execute_repo_iteration(analysis, options)
+            
+            # Create result object
+            Models::Result::IterationResult.new(iteration_data)
+          end
           
           define_method :execute_create_templated_folder do |analysis, template_processor, options|
             folder_path = analysis[:folder_analysis].path
@@ -96,7 +123,7 @@ module GitTemplate
             end
           end
           
-          define_method :execute_template_iteration do |analysis, template_processor, options|
+          define_method :execute_template_iteration_update do |analysis, template_processor, options|
             folder_path = analysis[:folder_analysis].path
             
             begin
@@ -116,6 +143,36 @@ module GitTemplate
               puts format_response_for_output(error_response, options)
               error_response
             end
+          end
+          
+          define_method :format_iteration_summary do |iteration_result|
+            output = []
+            
+            output << "Template Iteration Summary"
+            output << "=" * 40
+            output << "Folder: #{File.basename(iteration_result.application_folder)}"
+            output << "Status: #{iteration_result.successful? ? 'Success ✓' : 'Failed ✗'}"
+            output << "Template Applied: #{iteration_result.template_applied ? 'Yes ✓' : 'No ✗'}"
+            output << "Differences Found: #{iteration_result.differences_count}"
+            output << "Cleanup Updated: #{iteration_result.cleanup_updated ? 'Yes' : 'No'}"
+            
+            if iteration_result.successful?
+              if iteration_result.has_differences?
+                output << ""
+                output << "Next Steps:"
+                output << "  1. Review differences with: git-template diff-result #{iteration_result.application_folder}"
+                output << "  2. Refine template and iterate again"
+              else
+                output << ""
+                output << "✅ Template iteration completed successfully!"
+                output << "   No differences found - template is complete."
+              end
+            else
+              output << ""
+              output << "❌ Iteration failed. Check error messages and template configuration."
+            end
+            
+            output.join("\n")
           end
         end
       end
