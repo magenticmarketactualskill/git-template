@@ -7,7 +7,10 @@ require_relative '../status_command_errors'
 require_relative '../models/result/folder_analysis'
 require_relative '../models/result/comparison_result'
 require_relative '../models/result/iteration_result'
+require_relative '../models/result/iterate_command_result'
 require_relative 'template_processor'
+require_relative 'folder_analyzer'
+require_relative 'iteration_strategy'
 
 module GitTemplate
   module Services
@@ -33,6 +36,29 @@ module GitTemplate
           create_iteration_result(folder_path, templated_folder_path, iteration_result, options)
         rescue => e
           raise TemplateProcessingError.new('execute_repo_iteration', e.message)
+        end
+      end
+
+      def execute_repo_iteration_for_path(folder_path, options = {})
+        begin
+          # Analyze folder and determine if it's suitable for repo iteration
+          folder_analyzer = FolderAnalyzer.new
+          iteration_strategy_service = IterationStrategy.new
+          
+          analysis = iteration_strategy_service.analyze_folder_for_iteration(folder_path, folder_analyzer)
+          
+          # Validate prerequisites and execute iteration
+          iteration_data = execute_repo_iteration(analysis, options)
+          
+          # Return IterationResult object
+          Models::Result::IterationResult.new(iteration_data)
+        rescue => e
+          # Return error result object instead of throwing exception
+          Models::Result::IterateCommandResult.new(
+            success: false,
+            operation: "recreate_repo",
+            error_message: e.message
+          )
         end
       end
 
