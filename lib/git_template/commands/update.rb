@@ -26,19 +26,17 @@ module GitTemplate
             execute_with_error_handling("update", options) do
               log_command_execution("update", [path], options)
               
-              measure_execution_time do
-                template_processor = Services::TemplateProcessor.new
-                folder_analyzer = Services::FolderAnalyzer.new
-                
-                # Validate and analyze folder
-                validated_path = validate_directory_path(path, must_exist: true)
-                
-                create_success_response("update", {
-                  folder_path: validated_path,
-                  operations_performed: ["Template update completed"],
-                  validation_result: { valid: true, validation_errors: [] }
-                })
-              end
+              template_processor = Services::TemplateProcessor.new
+              folder_analyzer = Services::FolderAnalyzer.new
+              
+              # Validate and analyze folder
+              validated_path = validate_directory_path(path, must_exist: true)
+              
+              create_success_response("update", {
+                folder_path: validated_path,
+                operations_performed: ["Template update completed"],
+                validation_result: { valid: true, validation_errors: [] }
+              })
             end
           end
         end

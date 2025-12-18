@@ -20,30 +20,27 @@ module GitTemplate
           define_method :strategy do |folder_path = "."|
             execute_with_error_handling("strategy", options) do
               log_command_execution("strategy", [folder_path], options)
+              setup_environment(options)
               
-              measure_execution_time do
-                setup_environment(options)
-                
-                # Validate and analyze folder
-                validated_path = validate_directory_path(folder_path, must_exist: false)
-                
-                # Analyze iteration strategy
-                result = analyze_iteration_strategy(validated_path, options)
-                
-                # Output based on format
-                formatted_result = result.format_output(options[:format], options)
-                
-                case options[:format]
-                when "json"
-                  puts JSON.pretty_generate(formatted_result)
-                when "summary"
-                  puts format_strategy_summary(result)
-                else
-                  puts formatted_result[:data][:report]
-                end
-                
-                formatted_result
+              # Validate and analyze folder
+              validated_path = validate_directory_path(folder_path, must_exist: false)
+              
+              # Analyze iteration strategy
+              result = analyze_iteration_strategy(validated_path, options)
+              
+              # Output based on format
+              formatted_result = result.format_output(options[:format], options)
+              
+              case options[:format]
+              when "json"
+                puts JSON.pretty_generate(formatted_result)
+              when "summary"
+                puts format_strategy_summary(result)
+              else
+                puts formatted_result[:data][:report]
               end
+              
+              formatted_result
             end
           end
           

@@ -23,30 +23,27 @@ module GitTemplate
           define_method :status do |folder_path = "."|
             execute_with_error_handling("status", options) do
               log_command_execution("status", [folder_path], options)
+              setup_environment(options)
               
-              measure_execution_time do
-                setup_environment(options)
-                
-                # Validate and analyze folder
-                validated_path = validate_directory_path(folder_path, must_exist: false)
-                folder_analysis_data = analyze_folder_status(validated_path)
+              # Validate and analyze folder
+              validated_path = validate_directory_path(folder_path, must_exist: false)
+              folder_analysis_data = analyze_folder_status(validated_path)
 
-                # Generate and output report
-                result = generate_status_report(folder_analysis_data, options)
-                
-                # Output based on format
-                case options[:format]
-                when "json"
-                  puts JSON.pretty_generate(result)
-                when "summary"
-                  status_formatter = Services::StatusFormatter.new
-                  puts status_formatter.format_summary_status(result)
-                else
-                  puts result[:data][:report]
-                end
-                
-                result
+              # Generate and output report
+              result = generate_status_report(folder_analysis_data, options)
+              
+              # Output based on format
+              case options[:format]
+              when "json"
+                puts JSON.pretty_generate(result)
+              when "summary"
+                status_formatter = Services::StatusFormatter.new
+                puts status_formatter.format_summary_status(result)
+              else
+                puts result[:data][:report]
               end
+              
+              result
             end
           end
           

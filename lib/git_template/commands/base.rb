@@ -48,11 +48,20 @@ module GitTemplate
 
       def execute_with_error_handling(operation_name, options = {})
         @logger.info("Starting #{operation_name}")
+        start_time = Time.now
         
         begin
           result = yield
           
-          @logger.info("Completed #{operation_name} successfully")
+          end_time = Time.now
+          execution_time = end_time - start_time
+          @logger.info("Completed #{operation_name} successfully in #{execution_time.round(2)} seconds")
+          
+          # Add execution time to result if it's a hash
+          if result.is_a?(Hash)
+            result[:execution_time] = execution_time
+          end
+          
           result
           
         rescue StatusCommandError => e
@@ -181,20 +190,7 @@ module GitTemplate
         @logger.debug("Options: #{options.inspect}")
       end
 
-      def measure_execution_time
-        start_time = Time.now
-        result = yield
-        end_time = Time.now
-        
-        execution_time = end_time - start_time
-        @logger.info("Execution completed in #{execution_time.round(2)} seconds")
-        
-        if result.is_a?(Hash)
-          result[:execution_time] = execution_time
-        end
-        
-        result
-      end
+
 
       def setup_environment(options)
         ENV['VERBOSE'] = '1' if options[:verbose]
@@ -219,6 +215,8 @@ module GitTemplate
           raise StatusCommandError.new("File operation failed: #{e.message}")
         end
       end
+
+
     end
   end
 end

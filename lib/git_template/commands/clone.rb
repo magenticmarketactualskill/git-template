@@ -25,27 +25,25 @@ module GitTemplate
           execute_with_error_handling("clone", options) do
             log_command_execution("clone", [git_url, target_folder], options)
             
-            measure_execution_time do
-              # Validate and prepare parameters
-              validated_url = validate_git_url(git_url)
-              target_path = determine_target_path(git_url, target_folder)
-              
-              # Validate target path
-              validate_target_path(target_path, options)
-              
-              # Perform clone operation
-              clone_options = prepare_clone_options(options)
-              git_operations = Services::GitOperations.new
-              result = git_operations.clone_repository(validated_url, target_path, clone_options)
-              
-              # Generate success response
-              create_success_response("clone", {
-                git_url: validated_url,
-                target_path: target_path,
-                repository_name: extract_repository_name(git_url),
-                clone_result: result
-              })
-            end
+            # Validate and prepare parameters
+            validated_url = validate_git_url(git_url)
+            target_path = determine_target_path(git_url, target_folder)
+            
+            # Validate target path
+            validate_target_path(target_path, options)
+            
+            # Perform clone operation
+            clone_options = prepare_clone_options(options)
+            git_operations = Services::GitOperations.new
+            result = git_operations.clone_repository(validated_url, target_path, clone_options)
+            
+            # Generate success response
+            create_success_response("clone", {
+              git_url: validated_url,
+              target_path: target_path,
+              repository_name: extract_repository_name(git_url),
+              clone_result: result
+            })
           end
         end
 

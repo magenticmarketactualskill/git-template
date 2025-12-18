@@ -55,7 +55,7 @@ module GitTemplate
             folder_path: extract_folder_path
           }
           
-          create_success_response("status", response_data)
+          JSON.pretty_generate(create_success_response("status", response_data))
         end
 
         # Format as summary output

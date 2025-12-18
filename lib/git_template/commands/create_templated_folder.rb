@@ -20,52 +20,50 @@ module GitTemplate
             execute_with_error_handling("create_templated_folder", options) do
               log_command_execution("create_templated_folder", [path], options)
               
-              measure_execution_time do
-                folder_analyzer = Services::FolderAnalyzer.new
-                
-                # Validate source folder
-                validated_path = validate_directory_path(path, must_exist: true)
-                
-                # Analyze source folder
-                analysis = folder_analyzer.analyze_template_development_status(validated_path)
-                folder_analysis = analysis[:folder_analysis]
-                
-                # Check if source folder is suitable
-                unless folder_analysis[:exists]
-                  raise StatusCommandError.new("Source folder does not exist: #{validated_path}")
-                end
-                
-                # Calculate templated folder path
-                templated_path = calculate_templated_path(validated_path)
-                
-                # Check if templated folder already exists
-                if File.exist?(templated_path) && !options[:force]
-                  raise StatusCommandError.new("Templated folder already exists: #{templated_path}. Use --force to overwrite.")
-                end
-                
-                # Create templated folder structure
-                create_folder_structure(validated_path, templated_path, options)
-                
-                # Generate response
-                result = create_success_response("create_templated_folder", {
-                  source_folder: validated_path,
-                  templated_folder: templated_path,
-                  template_file: File.join(templated_path, '.git_template', 'template.rb'),
-                  created_structure: true
-                })
-                
-                # Output results based on format
-                case options[:format]
-                when "json"
-                  puts JSON.pretty_generate(result)
-                when "summary"
-                  puts format_create_summary(result)
-                else
-                  puts format_detailed_create_output(result)
-                end
-                
-                result
+              folder_analyzer = Services::FolderAnalyzer.new
+              
+              # Validate source folder
+              validated_path = validate_directory_path(path, must_exist: true)
+              
+              # Analyze source folder
+              analysis = folder_analyzer.analyze_template_development_status(validated_path)
+              folder_analysis = analysis[:folder_analysis]
+              
+              # Check if source folder is suitable
+              unless folder_analysis[:exists]
+                raise StatusCommandError.new("Source folder does not exist: #{validated_path}")
               end
+              
+              # Calculate templated folder path
+              templated_path = calculate_templated_path(validated_path)
+              
+              # Check if templated folder already exists
+              if File.exist?(templated_path) && !options[:force]
+                raise StatusCommandError.new("Templated folder already exists: #{templated_path}. Use --force to overwrite.")
+              end
+              
+              # Create templated folder structure
+              create_folder_structure(validated_path, templated_path, options)
+              
+              # Generate response
+              result = create_success_response("create_templated_folder", {
+                source_folder: validated_path,
+                templated_folder: templated_path,
+                template_file: File.join(templated_path, '.git_template', 'template.rb'),
+                created_structure: true
+              })
+              
+              # Output results based on format
+              case options[:format]
+              when "json"
+                puts JSON.pretty_generate(result)
+              when "summary"
+                puts format_create_summary(result)
+              else
+                puts format_detailed_create_output(result)
+              end
+              
+              result
             end
           end
 

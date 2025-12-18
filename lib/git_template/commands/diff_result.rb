@@ -21,8 +21,6 @@ module GitTemplate
         define_method :diff_result do |path = "."|
           execute_with_error_handling("diff_result", options) do
             log_command_execution("diff_result", [path], options)
-          
-          measure_execution_time do
             # Validate and resolve folder paths
             source_folder, templated_folder = resolve_folder_paths(path, options)
             
@@ -55,7 +53,6 @@ module GitTemplate
             
             result
           end
-        end
         end
 
         private

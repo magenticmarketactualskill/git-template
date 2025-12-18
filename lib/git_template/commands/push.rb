@@ -27,18 +27,16 @@ module GitTemplate
             execute_with_error_handling("push", options) do
               log_command_execution("push", [path, remote_url], options)
               
-              measure_execution_time do
-                git_operations = Services::GitOperations.new
-                
-                # Validate and prepare parameters
-                validated_path = validate_directory_path(path, must_exist: true)
-                
-                create_success_response("push", {
-                  folder_path: validated_path,
-                  remote_url: remote_url,
-                  push_completed: true
-                })
-              end
+              git_operations = Services::GitOperations.new
+              
+              # Validate and prepare parameters
+              validated_path = validate_directory_path(path, must_exist: true)
+              
+              create_success_response("push", {
+                folder_path: validated_path,
+                remote_url: remote_url,
+                push_completed: true
+              })
             end
           end
         end

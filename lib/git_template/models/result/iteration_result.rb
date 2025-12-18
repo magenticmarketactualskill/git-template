@@ -158,6 +158,37 @@ module GitTemplate
           @application_folder
         end
 
+        # Override format_as_summary to use the iteration summary format
+        def format_as_summary(options = {})
+          output = []
+          
+          output << "Template Iteration Summary"
+          output << "=" * 40
+          output << "Folder: #{File.basename(@application_folder)}"
+          output << "Status: #{successful? ? 'Success ✓' : 'Failed ✗'}"
+          output << "Template Applied: #{@template_applied ? 'Yes ✓' : 'No ✗'}"
+          output << "Differences Found: #{@differences_count}"
+          output << "Cleanup Updated: #{@cleanup_updated ? 'Yes' : 'No'}"
+          
+          if successful?
+            if has_differences?
+              output << ""
+              output << "Next Steps:"
+              output << "  1. Review differences with: git-template diff-result #{@application_folder}"
+              output << "  2. Refine template and iterate again"
+            else
+              output << ""
+              output << "✅ Template iteration completed successfully!"
+              output << "   No differences found - template is complete."
+            end
+          else
+            output << ""
+            output << "❌ Iteration failed. Check error messages and template configuration."
+          end
+          
+          output.join("\n")
+        end
+
         private
 
         def status_indicator(value)
