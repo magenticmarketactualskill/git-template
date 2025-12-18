@@ -8,6 +8,7 @@ require_relative 'base'
 require_relative '../services/folder_analyzer'
 require_relative '../services/status_reporter'
 require_relative '../services/status_formatter'
+require_relative '../models/result/folder_analysis'
 
 module GitTemplate
   module Command
@@ -70,26 +71,30 @@ module GitTemplate
             
             case options[:format]
             when "json"
+              status_result = status_reporter.send(:convert_to_status_result, analysis_data)
               create_success_response("status", {
-                analysis: analysis_data,
-                folder_path: analysis_data.dig(:folder_analysis, :path)
+                analysis: status_result.to_hash,
+                folder_path: status_result.folder_analysis.path
               })
             when "summary"
+              status_result = status_reporter.send(:convert_to_status_result, analysis_data)
               create_success_response("status", {
-                summary: extract_status_summary(analysis_data),
-                folder_path: analysis_data.dig(:folder_analysis, :path)
+                summary: status_result.summary,
+                folder_path: status_result.folder_analysis.path
               })
             else
-              report = status_reporter.generate_report(analysis_data)
+              report_result = status_reporter.generate_report(analysis_data)
               create_success_response("status", {
-                report: report,
-                analysis: analysis_data,
-                folder_path: analysis_data.dig(:folder_analysis, :path)
+                report: report_result.to_s,
+                analysis: report_result.status_result.to_hash,
+                folder_path: report_result.status_result.folder_analysis.path
               })
             end
           end
           
           define_method :extract_status_summary do |analysis_data|
+            # This method is now deprecated in favor of StatusResult.summary
+            # but kept for backward compatibility
             folder_analysis = analysis_data[:folder_analysis]
             development_status = analysis_data[:development_status]
             
