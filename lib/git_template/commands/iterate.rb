@@ -13,7 +13,6 @@ module GitTemplate
   module Command
     module Iterate
       def self.included(base)
-        base.extend(GitTemplate::Command::Base)
         base.class_eval do
           desc "iterate [PATH]", "Handle template iteration with configuration preservation"
           option :create_templated_folder, type: :boolean, desc: "Create templated folder if it doesn't exist"

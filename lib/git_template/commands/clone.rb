@@ -11,7 +11,6 @@ module GitTemplate
   module Command
     module Clone
       def self.included(base)
-        base.extend(GitTemplate::Command::Base)
         base.class_eval do
         desc "clone GIT_URL [TARGET_FOLDER]", "Clone a git repository for template development"
         option :quiet, type: :boolean, desc: "Suppress output during clone"

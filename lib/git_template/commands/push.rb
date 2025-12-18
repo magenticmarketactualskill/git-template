@@ -13,7 +13,6 @@ module GitTemplate
   module Command
     module Push
       def self.included(base)
-        base.extend(GitTemplate::Command::Base)
         base.class_eval do
           desc "push [PATH] [REMOTE_URL]", "Push git repository with initialization and verification"
           option :initialize_if_needed, type: :boolean, desc: "Initialize repository if not already a git repo"

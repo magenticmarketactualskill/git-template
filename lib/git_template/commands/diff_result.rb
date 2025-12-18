@@ -11,7 +11,6 @@ module GitTemplate
   module Command
     module DiffResult
       def self.included(base)
-        base.extend(GitTemplate::Command::Base)
         base.class_eval do
         desc "diff_result [PATH]", "Generate detailed file-by-file diff between source and templated folders"
         option :source_folder, type: :string, desc: "Explicit source folder path"

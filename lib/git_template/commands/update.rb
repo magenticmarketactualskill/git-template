@@ -14,7 +14,6 @@ module GitTemplate
   module Command
     module Update
       def self.included(base)
-        base.extend(GitTemplate::Command::Base)
         base.class_eval do
           desc "update [PATH]", "Handle template update processing and validation"
           option :refresh_structure, type: :boolean, desc: "Refresh template structure analysis"

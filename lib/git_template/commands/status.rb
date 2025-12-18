@@ -12,7 +12,6 @@ module GitTemplate
   module Command
     module Status
       def self.included(base)
-        base.extend(GitTemplate::Command::Base)
         base.class_eval do
           
           desc "status FOLDER", "Check the status of application folders for template development"

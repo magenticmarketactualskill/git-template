@@ -128,25 +128,59 @@ module GitTemplate
 
       def generate_recommendations(analysis)
         recommendations = []
+        folder_path = analysis.path
         
         case determine_development_status(analysis)
         when :folder_not_found
-          recommendations << "Create the folder or check the path"
+          recommendations << "Create the folder: mkdir -p \"#{folder_path}\""
+          recommendations << "Or verify the path is correct"
         when :not_template_project
-          recommendations << "Initialize as git repository or add template configuration"
+          if !analysis.is_git_repository
+            recommendations << "Initialize as git repository: cd \"#{folder_path}\" && git init"
+          end
+          recommendations << "Or add template configuration: mkdir -p \"#{folder_path}/.git_template\""
         when :application_folder_ready_for_templating
-          recommendations << "Create corresponding templated folder with template configuration"
+          # Calculate the templated folder path
+          relative_path = get_relative_path_for_templated(folder_path)
+          templated_path = "templated/#{relative_path}"
+          recommendations << "Create templated folder: git-template iterate \"#{folder_path}\" --create-templated-folder"
+          recommendations << "Or manually: mkdir -p \"#{templated_path}/.git_template\""
+          recommendations << "Then create template: touch \"#{templated_path}/.git_template/template.rb\""
         when :template_folder_without_templated_version
-          recommendations << "Create templated version for iteration and testing"
+          relative_path = get_relative_path_for_templated(folder_path)
+          templated_path = "templated/#{relative_path}"
+          recommendations << "Create templated version: git-template iterate \"#{folder_path}\" --create-templated-folder"
+          recommendations << "Or manually: mkdir -p \"#{templated_path}/.git_template\""
         when :templated_folder_missing_configuration
-          recommendations << "Add .git_template directory to templated folder"
+          templated_folder = analysis.templated_folder_path
+          recommendations << "Add template configuration: mkdir -p \"#{templated_folder}/.git_template\""
+          recommendations << "Create template file: touch \"#{templated_folder}/.git_template/template.rb\""
         when :ready_for_template_iteration
-          recommendations << "Ready for template iteration and refinement"
+          recommendations << "Run template iteration: git-template iterate \"#{folder_path}\""
+          recommendations << "Check differences: git-template diff_result \"#{folder_path}\""
         else
           recommendations << "Review folder structure and template configuration"
+          recommendations << "Run: git-template status \"#{folder_path}\" --format=json for detailed analysis"
         end
         
         recommendations
+      end
+
+      private
+
+      def get_relative_path_for_templated(folder_path)
+        current_dir = Dir.pwd
+        expanded_path = File.expand_path(folder_path)
+        
+        # If expanded_path is absolute and starts with current_dir, make it relative
+        if expanded_path.start_with?(current_dir)
+          relative_path = expanded_path[(current_dir.length + 1)..-1] # +1 to skip the '/'
+        else
+          # If it's already relative or doesn't start with current_dir, use as-is
+          relative_path = folder_path.start_with?('/') ? File.basename(folder_path) : folder_path
+        end
+        
+        relative_path
       end
     end
   end
