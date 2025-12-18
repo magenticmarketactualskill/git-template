@@ -73,51 +73,15 @@ module GitTemplate
           define_method :create_templated_folder do |analysis, template_processor, options|
             folder_path = analysis[:folder_analysis].path
             
-            begin
-              # Create templated folder and copy configuration
-              result = template_processor.create_templated_folder(folder_path, options)
-              
-              Models::Result::IterateCommandResult.new(
-                success: true,
-                operation: "iterate",
-                data: {
-                  folder_path: folder_path,
-                  iteration_type: "create_templated_folder",
-                  result: result
-                }
-              )
-            rescue => e
-              Models::Result::IterateCommandResult.new(
-                success: false,
-                operation: "iterate",
-                error_message: "Templated folder creation failed: #{e.message}"
-              )
-            end
+            # Create templated folder and copy configuration
+            template_processor.create_templated_folder(folder_path, options)
           end
           
           define_method :rerun_template do |analysis, template_processor, options|
             folder_path = analysis[:folder_analysis].path
             
-            begin
-              # Update template configuration only
-              result = template_processor.update_template_configuration(folder_path, options)
-              
-              Models::Result::IterateCommandResult.new(
-                success: true,
-                operation: "iterate",
-                data: {
-                  folder_path: folder_path,
-                  iteration_type: "template_iteration",
-                  result: result
-                }
-              )
-            rescue => e
-              Models::Result::IterateCommandResult.new(
-                success: false,
-                operation: "iterate",
-                error_message: "Template update failed: #{e.message}"
-              )
-            end
+            # Update template configuration only
+            template_processor.update_template_configuration(folder_path, options)
           end
           
           define_method :recreate_repo do |analysis, options|
