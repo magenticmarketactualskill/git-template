@@ -13,13 +13,13 @@ module GitTemplate
       def self.included(base)
         base.class_eval do
         desc "clone GIT_URL [TARGET_FOLDER]", "Clone a git repository for template development"
+        add_common_options
         option :quiet, type: :boolean, desc: "Suppress output during clone"
         option :depth, type: :numeric, desc: "Create a shallow clone with specified depth"
         option :branch, type: :string, desc: "Clone specific branch"
         option :allow_existing, type: :boolean, desc: "Allow cloning into existing directory"
         option :create_template_config, type: :boolean, desc: "Create basic template configuration"
         option :create_readme, type: :boolean, desc: "Create template development README"
-        option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
         
         define_method :clone do |git_url, target_folder = nil|
           execute_with_error_handling("clone", options) do

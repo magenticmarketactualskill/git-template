@@ -13,10 +13,10 @@ module GitTemplate
       def self.included(base)
         base.class_eval do
         desc "diff_result [PATH]", "Generate detailed file-by-file diff between source and templated folders"
+        add_common_options
         option :source_folder, type: :string, desc: "Explicit source folder path"
         option :templated_folder, type: :string, desc: "Explicit templated folder path"
         option :output_file, type: :string, desc: "Custom output file path for diff results"
-        option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
         
         define_method :diff_result do |path = "."|
           execute_with_error_handling("diff_result", options) do

@@ -13,9 +13,8 @@ module GitTemplate
       def self.included(base)
         base.class_eval do
           desc "create-templated-folder [PATH]", "Create templated folder structure with template configuration"
+          add_common_options
           option :template_content, type: :string, desc: "Custom template content"
-          option :force, type: :boolean, desc: "Overwrite existing templated folder"
-          option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
           
           define_method :create_templated_folder do |path = "."|
             execute_with_error_handling("create_templated_folder", options) do

@@ -10,6 +10,19 @@ module GitTemplate
     module Base
       include StatusCommandErrors
 
+      def self.included(base)
+        base.extend(ClassMethods)
+      end
+
+      module ClassMethods
+        def add_common_options
+          option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
+          option :verbose, type: :boolean, default: false, desc: "Show verbose output"
+          option :debug, type: :boolean, default: false, desc: "Show debug information"
+          option :force, type: :boolean, default: false, desc: "Force operation even if prerequisites not fully met"
+        end
+      end
+
       def setup_logger
         # Simple logger setup - could be enhanced with proper logging library
         logger = Object.new
@@ -181,6 +194,12 @@ module GitTemplate
         end
         
         result
+      end
+
+      def setup_environment(options)
+        ENV['VERBOSE'] = '1' if options[:verbose]
+        ENV['DEBUG'] = '1' if options[:debug]
+        @logger = setup_logger
       end
 
       def ensure_directory_exists(path)

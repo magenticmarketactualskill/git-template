@@ -18,11 +18,8 @@ module GitTemplate
       def self.included(base)
         base.class_eval do
           desc "iterate [PATH]", "Handle template iteration with configuration preservation"
+          add_common_options
           option :detailed_comparison, type: :boolean, default: true, desc: "Generate detailed comparison report"
-          option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
-          option :verbose, type: :boolean, default: false, desc: "Show verbose output"
-          option :debug, type: :boolean, default: false, desc: "Show debug information"
-          option :force, type: :boolean, default: false, desc: "Force iteration even if prerequisites not fully met"
           
           define_method :iterate do |path = "."|
             execute_with_error_handling("iterate", options) do
@@ -85,11 +82,6 @@ module GitTemplate
           end
           
           private
-          
-          define_method :setup_environment do |opts|
-            ENV['VERBOSE'] = '1' if opts[:verbose]
-            ENV['DEBUG'] = '1' if opts[:debug]
-          end
           
           define_method :execute_repo_iteration do |analysis, options|
             template_iteration_service = Services::TemplateIteration.new

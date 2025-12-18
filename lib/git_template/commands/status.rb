@@ -18,9 +18,7 @@ module GitTemplate
         base.class_eval do
           
           desc "status [PATH]", "Check the status of application folders for template development"
-          option :format, type: :string, default: "detailed", desc: "Output format: detailed, summary, json"
-          option :verbose, type: :boolean, default: false, desc: "Show verbose output"
-          option :debug, type: :boolean, default: false, desc: "Show debug information"
+          add_common_options
           
           define_method :status do |folder_path = "."|
             execute_with_error_handling("status", options) do
@@ -53,11 +51,6 @@ module GitTemplate
           end
           
           private
-          
-          define_method :setup_environment do |opts|
-            ENV['VERBOSE'] = '1' if opts[:verbose]
-            ENV['DEBUG'] = '1' if opts[:debug]
-          end
           
           define_method :analyze_folder_status do |folder_path|
             folder_analyzer = Services::FolderAnalyzer.new

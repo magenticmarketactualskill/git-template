@@ -14,9 +14,7 @@ module GitTemplate
         base.class_eval do
           
           desc "strategy [PATH]", "Analyze iteration strategy for template development"
-          option :format, type: :string, default: "detailed", desc: "Output format: detailed, summary, json"
-          option :verbose, type: :boolean, default: false, desc: "Show verbose output"
-          option :debug, type: :boolean, default: false, desc: "Show debug information"
+          add_common_options
           option :validate, type: :boolean, default: true, desc: "Include validation checks"
           
           define_method :strategy do |folder_path = "."|
@@ -50,11 +48,6 @@ module GitTemplate
           end
           
           private
-          
-          define_method :setup_environment do |opts|
-            ENV['VERBOSE'] = '1' if opts[:verbose]
-            ENV['DEBUG'] = '1' if opts[:debug]
-          end
           
           define_method :analyze_iteration_strategy do |folder_path, options|
             folder_analyzer = Services::FolderAnalyzer.new

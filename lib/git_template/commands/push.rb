@@ -15,14 +15,13 @@ module GitTemplate
       def self.included(base)
         base.class_eval do
           desc "push [PATH] [REMOTE_URL]", "Push git repository with initialization and verification"
+          add_common_options
           option :initialize_if_needed, type: :boolean, desc: "Initialize repository if not already a git repo"
           option :commit_changes, type: :boolean, desc: "Commit changes before pushing"
           option :commit_message, type: :string, desc: "Custom commit message"
           option :remote_name, type: :string, default: "origin", desc: "Remote name"
           option :branch, type: :string, desc: "Branch to push"
-          option :force, type: :boolean, desc: "Force push"
           option :set_upstream, type: :boolean, desc: "Set upstream tracking"
-          option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
           
           define_method :push do |path = ".", remote_url = nil|
             execute_with_error_handling("push", options) do

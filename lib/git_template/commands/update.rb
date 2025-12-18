@@ -16,11 +16,11 @@ module GitTemplate
       def self.included(base)
         base.class_eval do
           desc "update [PATH]", "Handle template update processing and validation"
+          add_common_options
           option :refresh_structure, type: :boolean, desc: "Refresh template structure analysis"
           option :fix_issues, type: :boolean, desc: "Fix common template issues"
           option :update_metadata, type: :boolean, desc: "Update template metadata"
           option :all, type: :boolean, desc: "Perform all update operations"
-          option :format, type: :string, default: "detailed", desc: "Output format (detailed, summary, json)"
           
           define_method :update do |path = "."|
             execute_with_error_handling("update", options) do
