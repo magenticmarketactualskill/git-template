@@ -79,6 +79,19 @@ module GitTemplate
             timestamp: @timestamp
           }
         end
+
+        # Override format methods for StatusResult-specific behavior
+        def generate_detailed_report(options = {})
+          # Generate detailed report using StatusReporter
+          require_relative '../../services/status_reporter'
+          reporter = GitTemplate::Services::StatusReporter.new
+          report_result = reporter.generate_report_from_result(self)
+          report_result.to_s
+        end
+
+        def extract_folder_path
+          @folder_analysis.path
+        end
       end
     end
   end

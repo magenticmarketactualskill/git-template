@@ -38,6 +38,36 @@ module GitTemplate
             generated_at: @timestamp
           })
         end
+
+        def to_hash
+          to_json
+        end
+
+        # Override format methods for ReportResult-specific behavior
+        def generate_detailed_report(options = {})
+          @formatted_report
+        end
+
+        def extract_folder_path
+          @status_result&.folder_analysis&.path || "Unknown path"
+        end
+
+        # Delegate format calls to the underlying status_result when appropriate
+        def format_as_json(options = {})
+          if @status_result
+            @status_result.format_as_json(options)
+          else
+            super
+          end
+        end
+
+        def format_as_summary(options = {})
+          if @status_result
+            @status_result.format_as_summary(options)
+          else
+            super
+          end
+        end
       end
     end
   end

@@ -8,6 +8,7 @@ require_relative 'base'
 require_relative '../services/folder_analyzer'
 require_relative '../services/status_reporter'
 require_relative '../services/status_formatter'
+require_relative '../services/iteration_strategy'
 require_relative '../models/result/folder_analysis'
 
 module GitTemplate
@@ -31,12 +32,9 @@ module GitTemplate
                 # Validate and analyze folder
                 validated_path = validate_directory_path(folder_path, must_exist: false)
                 folder_analysis_data = analyze_folder_status(validated_path)
-                
-                iteration_analysis = analyze_folder_for_iteration(validated_path, folder_analyzer)
-                iteration_strategy = determine_iteration_strategy(analysis, options)
 
                 # Generate and output report
-                result = generate_status_report(analysis_data, options)
+                result = generate_status_report(folder_analysis_data, options)
                 
                 # Output based on format
                 case options[:format]
@@ -46,7 +44,7 @@ module GitTemplate
                   status_formatter = Services::StatusFormatter.new
                   puts status_formatter.format_summary_status(result)
                 else
-                  puts result[:report]
+                  puts result[:data][:report]
                 end
                 
                 result
@@ -69,27 +67,11 @@ module GitTemplate
           define_method :generate_status_report do |analysis_data, options|
             status_reporter = Services::StatusReporter.new
             
-            case options[:format]
-            when "json"
-              status_result = status_reporter.send(:convert_to_status_result, analysis_data)
-              create_success_response("status", {
-                analysis: status_result.to_hash,
-                folder_path: status_result.folder_analysis.path
-              })
-            when "summary"
-              status_result = status_reporter.send(:convert_to_status_result, analysis_data)
-              create_success_response("status", {
-                summary: status_result.summary,
-                folder_path: status_result.folder_analysis.path
-              })
-            else
-              report_result = status_reporter.generate_report(analysis_data)
-              create_success_response("status", {
-                report: report_result.to_s,
-                analysis: report_result.status_result.to_hash,
-                folder_path: report_result.status_result.folder_analysis.path
-              })
-            end
+            # Convert analysis data to StatusResult
+            status_result = status_reporter.send(:convert_to_status_result, analysis_data)
+            
+            # Use the base class format_output method
+            status_result.format_output(options[:format], options)
           end
           
           define_method :extract_status_summary do |analysis_data|
