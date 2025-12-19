@@ -4,27 +4,21 @@
 
 lib_path = File.join(File.dirname(__FILE__), '..', '..', '..', '..', 'lib')
 puts "Adding to load path: #{lib_path}"
-puts "Resolved path: #{File.expand_path(lib_path)}"
+puts "Resolved path: #{File.expand_path(lib_path,"git_template","generator")}"
 $LOAD_PATH.unshift(lib_path)
+generators::GitTemplate::Generators
 
-puts "Loading base..."
-require 'git_template/generator/base'
-puts "Loading gem_bundle..."
-require 'git_template/generator/gem_bundle'
-puts "Classes loaded successfully"
+puts "GemBundle0001" 
+require 'base'
+require 'gem_bundle'
+class GemBundle0001 < generators::Base
+  include generators:GemBundle
+  gem_bundle_meta {
+    id: "#{self}"
+  }
+  gem_bundle_text <<-TEXT
+source "https://rubygems.org"
 
-puts "Available classes:"
-puts "- #{GitTemplate::Generators::GemBundle}"
-puts "- #{GitTemplate::Generators::GemBundle::Config}"
-puts "- #{GitTemplate::Generators::GemBundle::GemGroup}"
-
-generator = GitTemplate::Generators::GemBundle.new(
-  GitTemplate::Generators::GemBundle::Config.new(
-    id: "#~ 030_PHASE_GemBundle",
-    groups: [ 
-      GitTemplate::Generators::GemBundle::GemGroup.new(
-        envs: [],
-        gem_text: <<-TEXT
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.1"
 
@@ -71,12 +65,9 @@ gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
-TEXT
-      ),
-      GitTemplate::Generators::GemBundle::GemGroup.new(
-        envs: [:development, :test],
-        gem_text: <<-TEXT
-  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+
+group :development, :test do
+# See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 
   # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
@@ -87,26 +78,21 @@ TEXT
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
-TEXT
-      ),
-      GitTemplate::Generators::GemBundle::GemGroup.new(
-        envs: [:development],
-        gem_text: <<-TEXT
-  # Use console on exceptions pages [https://github.com/rails/web-console]
+end
+
+group :development do
+# Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
-TEXT
-      ),
-      GitTemplate::Generators::GemBundle::GemGroup.new(
-        envs: [:test],
-        gem_text: <<-TEXT
-  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
+end
+
+group :test do
+# Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
-TEXT
-      )
-    ]       
-  )
-)
+end
+
+  TEXT
+end
 
 generator.generate
 
