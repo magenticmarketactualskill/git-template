@@ -3,6 +3,9 @@ require_relative 'base'
 module GitTemplate
   module Generators
     class PostFeature < Base
+      def self.data_module
+        p "#{self} Must override data module"
+      end
       def self.execute
         execute_with_messages do |data, messages|
           # Model generation

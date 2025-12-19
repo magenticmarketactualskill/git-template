@@ -3,6 +3,10 @@ require_relative 'base'
 module GitTemplate
   module Generators
     class HomeFeature < Base
+      def self.data_module
+        p "#{self} Must override data module"
+      end
+
       def self.execute
         execute_with_messages do |data, messages|
           # Controller generation
