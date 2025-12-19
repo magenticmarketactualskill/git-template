@@ -4,6 +4,7 @@
 # and then runs the template generators to recreate it from scratch.
 
 require_relative 'base'
+require_relative 'submodule_protection'
 require_relative '../models/result/iterate_command_result'
 require_relative '../status_command_errors'
 require 'fileutils'
@@ -13,6 +14,7 @@ module GitTemplate
     module RegenerateTemplate
       def self.included(base)
         base.class_eval do
+          include SubmoduleProtection
           desc "regenerate-template", "Delete template.rb and regenerate it using template generators"
           add_common_options
           option :path, type: :string, default: ".", desc: "Templated folder path (defaults to current directory)"
@@ -23,6 +25,13 @@ module GitTemplate
               path = options[:path] || "."
               log_command_execution("regenerate_template", [path], options)
               setup_environment(options)
+              
+              # Check if path is a submodule - if so, reject the operation
+              protection_result = check_submodule_protection(path, "regenerate_template")
+              if protection_result
+                puts protection_result.format_output(options[:format], options)
+                return protection_result
+              end
               
               # Validate templated folder
               validated_path = validate_directory_path(path, must_exist: true)
@@ -385,6 +394,8 @@ module GitTemplate
             puts "END OF REGENERATED TEMPLATE DETAILS"
             puts "="*80 + "\n"
           end
+          
+
         end
       end
     end

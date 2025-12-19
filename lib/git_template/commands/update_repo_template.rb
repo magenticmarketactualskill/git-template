@@ -1,7 +1,7 @@
-# RerunTemplateCommand Concern
+# UpdateRepoTemplateCommand Concern
 #
-# This command reruns template processing on an existing templated folder,
-# updating the template configuration based on the current folder state.
+# This command is specifically designed to update templates in submodule repositories.
+# It's the only command that should write to submodule folders.
 
 require_relative 'base'
 require_relative 'submodule_protection'
@@ -12,32 +12,36 @@ require_relative '../status_command_errors'
 
 module GitTemplate
   module Command
-    module RerunTemplate
+    module UpdateRepoTemplate
       def self.included(base)
         base.class_eval do
           include SubmoduleProtection
-          desc "rerun-template", "Rerun template processing and update template configuration"
+          desc "update-repo-template", "Update template in a submodule repository (only command allowed to write to submodules)"
           add_common_options
+          option :path, type: :string, desc: "Submodule path (must be a git submodule)", required: true
           option :update_content, type: :boolean, default: true, desc: "Update template content based on current state"
-          option :path, type: :string, default: ".", desc: "Templated folder path (defaults to current directory)"
           
-          define_method :rerun_template do
-            execute_with_error_handling("rerun_template", options) do
-              path = options[:path] || "."
-              log_command_execution("rerun_template", [path], options)
+          define_method :update_repo_template do
+            execute_with_error_handling("update_repo_template", options) do
+              path = options[:path]
+              log_command_execution("update_repo_template", [path], options)
               setup_environment(options)
               
-              # Check if path is a submodule - if so, reject the operation
-              protection_result = check_submodule_protection(path, "rerun_template")
-              if protection_result
-                puts protection_result.format_output(options[:format], options)
-                return protection_result
+              # Validate that the path is a submodule
+              unless is_submodule?(path)
+                result = Models::Result::IterateCommandResult.new(
+                  success: false,
+                  operation: "update_repo_template",
+                  error_message: "Path '#{path}' is not a git submodule. This command only works on submodules."
+                )
+                puts result.format_output(options[:format], options)
+                return result
               end
               
               template_processor = Services::TemplateProcessor.new
               folder_analyzer = Services::FolderAnalyzer.new
               
-              # Validate templated folder
+              # Validate submodule folder
               validated_path = validate_directory_path(path, must_exist: true)
               
               # Analyze folder to ensure it has template configuration
@@ -48,14 +52,14 @@ module GitTemplate
               unless folder_analysis[:has_template_configuration]
                 result = Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "rerun_template",
-                  error_message: "No template configuration found at #{validated_path}. Use create-templated-folder first."
+                  operation: "update_repo_template",
+                  error_message: "No template configuration found at #{validated_path}. The submodule must have a .git_template folder."
                 )
                 puts result.format_output(options[:format], options)
                 return result
               end
               
-              # Apply template to regenerate application files
+              # Apply template to regenerate application files in the submodule
               template_path = File.join(validated_path, '.git_template')
               
               begin
@@ -64,8 +68,9 @@ module GitTemplate
                 # Convert to IterateCommandResult format
                 result = Models::Result::IterateCommandResult.new(
                   success: true,
-                  operation: "rerun_template",
+                  operation: "update_repo_template",
                   data: {
+                    submodule_path: validated_path,
                     template_path: apply_result[:template_path],
                     target_path: apply_result[:target_path],
                     applied_template: apply_result[:applied_template],
@@ -75,7 +80,7 @@ module GitTemplate
               rescue => e
                 result = Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "rerun_template",
+                  operation: "update_repo_template",
                   error_message: "Template application failed: #{e.message}"
                 )
               end

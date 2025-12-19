@@ -5,6 +5,7 @@
 # TemplateProcessor service for the iterative template development process.
 
 require_relative 'base'
+require_relative 'submodule_protection'
 require_relative '../services/template_processor'
 require_relative '../services/folder_analyzer'
 require_relative '../services/iteration_strategy'
@@ -18,6 +19,7 @@ module GitTemplate
     module Iterate
       def self.included(base)
         base.class_eval do
+          include SubmoduleProtection
           desc "iterate", "Handle template iteration with configuration preservation"
           add_common_options
           option :detailed_comparison, type: :boolean, default: true, desc: "Generate detailed comparison report"
@@ -28,6 +30,13 @@ module GitTemplate
               path = options[:path] || "."
               log_command_execution("iterate", [path], options)
               setup_environment(options)
+              
+              # Check if path is a submodule - if so, reject the operation
+              protection_result = check_submodule_protection(path, "iterate")
+              if protection_result
+                puts protection_result.format_output(options[:format], options)
+                return protection_result
+              end
               
               template_processor = Services::TemplateProcessor.new
               folder_analyzer = Services::FolderAnalyzer.new
