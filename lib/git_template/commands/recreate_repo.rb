@@ -10,6 +10,7 @@ require_relative '../services/iteration_strategy'
 require_relative '../models/result/iteration_result'
 require_relative '../models/result/iterate_command_result'
 require_relative '../status_command_errors'
+require_relative '../config_manager'
 require 'open3'
 require 'fileutils'
 
@@ -18,33 +19,35 @@ module GitTemplate
     module RecreateRepo
       def self.included(base)
         base.class_eval do
-          desc "recreate-repo", "Recreate repo creates a submodule with a git clone of the repo, creates a templated folder, and recreates the repo using the .git-template folder. It then does a comparison of the generated content with the original"
+          desc "recreate-cloned-repo", "Recreate cloned repo creates a submodule with a git clone of the repo, creates a templated folder, and recreates the repo using the .git-template folder. It then does a comparison of the generated content with the original"
           add_common_options
           option :clean_before, type: :boolean, default: true, desc: "Clean templated folder before recreation"
           option :detailed_comparison, type: :boolean, default: true, desc: "Generate detailed comparison report"
-          option :url, type: :string, desc: "Repository URL to recreate", required: true
+          option :url, type: :string, desc: "Repository URL to recreate (uses default from ~/.git-template if not specified)"
+          option :path, type: :string, desc: "Path for the repository (uses default from ~/.git-template if not specified)"
           
-          define_method :recreate_repo do
-            execute_with_error_handling("recreate_repo", options) do
-              log_command_execution("recreate_repo", [], options)
+          define_method :recreate_cloned_repo do
+            execute_with_error_handling("recreate_cloned_repo", options) do
+              log_command_execution("recreate_cloned_repo", [], options)
               setup_environment(options)
               
-              # Get remote URL from options
-              remote_url = options[:url]
+              # Get remote URL from options or config
+              remote_url = options[:url] || ConfigManager.get_default_url
+              repo_path = options[:path] || ConfigManager.get_default_path
               
-              # Thor handles validation with required: true, but add safety check
+              # Check if we have a URL
               unless remote_url
                 result = Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "recreate_repo",
-                  error_message: "--url parameter is required for recreate-repo command"
+                  operation: "recreate_cloned_repo",
+                  error_message: "No URL specified. Use --url parameter or configure default in ~/.git-template"
                 )
                 puts result.format_output(options[:format], options)
                 return result
               end
               
               # Execute repository recreation
-              result = perform_recreate_repo(remote_url, options)
+              result = perform_recreate_cloned_repo(remote_url, repo_path, options)
               
               # Format and display output
               puts result.format_output(options[:format], options)
@@ -55,28 +58,33 @@ module GitTemplate
           
           private
           
-          define_method :perform_recreate_repo do |remote_url, options|
+          define_method :perform_recreate_cloned_repo do |remote_url, repo_path, options|
             begin
               # Check if submodule already exists (unless force is enabled)
               if submodule_exists?(remote_url) && !options[:force]
                 return Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "recreate_repo",
+                  operation: "recreate_cloned_repo",
                   error_message: "A submodule with URL #{remote_url} already exists (use --force to override)"
                 )
               end
               
-              # Extract repo name from URL
-              repo_name = File.basename(remote_url, '.git')
+              # Use provided path or extract repo name from URL
+              if repo_path
+                cloned_path = repo_path
+              else
+                repo_name = File.basename(remote_url, '.git')
+                cloned_path = "examples/#{repo_name}"
+              end
+              
               # The templated path will match the cloned path structure
-              cloned_subpath = "examples/#{repo_name}"
-              templated_path = "templated/#{cloned_subpath}"
+              templated_path = "templated/#{cloned_path}"
               
               # Check if templated folder exists
               if Dir.exist?(templated_path) && !options[:clean_before] && !options[:force]
                 return Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "recreate_repo",
+                  operation: "recreate_cloned_repo",
                   error_message: "Templated folder already exists at #{templated_path}"
                 )
               end
@@ -87,7 +95,7 @@ module GitTemplate
               end
               
               # Clone the repository as a submodule
-              cloned_path = clone_repository_as_submodule(remote_url, repo_name)
+              cloned_path = clone_repository_as_submodule(remote_url, cloned_path)
               # cloned_path should be examples/rails8-simple
               
               # Check if .git-template or .git_template folder exists
@@ -97,7 +105,7 @@ module GitTemplate
               unless Dir.exist?(git_template_path) || Dir.exist?(git_template_path_underscore)
                 return Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "recreate_repo",
+                  operation: "recreate_cloned_repo",
                   error_message: ".git-template or .git_template folder not found in cloned repository"
                 )
               end
@@ -108,7 +116,7 @@ module GitTemplate
               unless create_result.success
                 return Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "recreate_repo",
+                  operation: "recreate_cloned_repo",
                   error_message: "create-templated-folder failed: #{create_result.error_message}"
                 )
               end
@@ -118,7 +126,7 @@ module GitTemplate
               unless rerun_result.success
                 return Models::Result::IterateCommandResult.new(
                   success: false,
-                  operation: "recreate_repo",
+                  operation: "recreate_cloned_repo",
                   error_message: "rerun-template failed: #{rerun_result.error_message}"
                 )
               end
@@ -131,7 +139,7 @@ module GitTemplate
               # Return success
               Models::Result::IterateCommandResult.new(
                 success: true,
-                operation: "recreate_repo",
+                operation: "recreate_cloned_repo",
                 data: { 
                   message: "Repository recreation completed successfully",
                   cloned_path: cloned_path,
@@ -144,7 +152,7 @@ module GitTemplate
               # Return error result object
               Models::Result::IterateCommandResult.new(
                 success: false,
-                operation: "recreate_repo",
+                operation: "recreate_cloned_repo",
                 error_message: e.message,
                 error_type: e.class.name
               )
@@ -159,11 +167,10 @@ module GitTemplate
             gitmodules_content.include?(remote_url)
           end
           
-          define_method :clone_repository_as_submodule do |remote_url, repo_name|
-            submodule_path = "examples/#{repo_name}"
+          define_method :clone_repository_as_submodule do |remote_url, submodule_path|
             
-            # Ensure examples directory exists
-            FileUtils.mkdir_p("examples")
+            # Ensure parent directory exists
+            FileUtils.mkdir_p(File.dirname(submodule_path))
             
             # If submodule already exists and we're forcing, remove it first
             if Dir.exist?(submodule_path)

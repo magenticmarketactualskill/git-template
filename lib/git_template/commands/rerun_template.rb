@@ -61,17 +61,31 @@ module GitTemplate
               begin
                 apply_result = template_processor.apply_template(template_path, validated_path, options)
                 
-                # Convert to IterateCommandResult format
-                result = Models::Result::IterateCommandResult.new(
-                  success: true,
-                  operation: "rerun_template",
-                  data: {
-                    template_path: apply_result[:template_path],
-                    target_path: apply_result[:target_path],
-                    applied_template: apply_result[:applied_template],
-                    output: apply_result[:output]
-                  }
-                )
+                # Check if template application was successful
+                if apply_result[:success]
+                  result = Models::Result::IterateCommandResult.new(
+                    success: true,
+                    operation: "rerun_template",
+                    data: {
+                      template_path: apply_result[:template_path],
+                      target_path: apply_result[:target_path],
+                      applied_template: apply_result[:applied_template],
+                      output: apply_result[:output]
+                    }
+                  )
+                else
+                  result = Models::Result::IterateCommandResult.new(
+                    success: false,
+                    operation: "rerun_template",
+                    error_message: "Template execution failed",
+                    data: {
+                      template_path: apply_result[:template_path],
+                      target_path: apply_result[:target_path],
+                      applied_template: apply_result[:applied_template],
+                      output: apply_result[:output]
+                    }
+                  )
+                end
               rescue => e
                 result = Models::Result::IterateCommandResult.new(
                   success: false,

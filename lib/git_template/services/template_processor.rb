@@ -5,6 +5,7 @@
 
 require 'fileutils'
 require 'tmpdir'
+require 'stringio'
 require_relative '../models/result/comparison_result'
 require_relative '../models/result/iterate_command_result'
 require_relative '../models/template_configuration'
@@ -34,7 +35,7 @@ module GitTemplate
           result = execute_template_application(template_config.template_file_path, target_path, options)
           
           {
-            success: true,
+            success: result[:success],
             template_path: template_path,
             target_path: target_path,
             applied_template: template_config.template_file_path,
@@ -282,15 +283,31 @@ module GitTemplate
           end
           
           # Apply the template
-          if File.exist?('bin/rails')
-            # Use Rails template system
+          rails_exists = File.exist?('bin/rails')
+          app_config_exists = File.exist?('config/application.rb')
+          boot_exists = File.exist?('config/boot.rb')
+          
+          # Only use Rails template system if we have a complete Rails app
+          if rails_exists && app_config_exists && boot_exists
+            # Use Rails template system for complete Rails apps
             cmd = "bin/rails app:template LOCATION=#{template_file}"
             output = `#{cmd} 2>&1`
             success = $?.success?
+            
+            # Also check for common error patterns in output even if exit code was 0
+            error_patterns = ['LoadError', 'cannot load such file', 'Error:', 'ERROR:', 'FATAL:', 'NoMethodError', 'NameError']
+            if success && error_patterns.any? { |pattern| output.include?(pattern) }
+              success = false
+            end
           else
-            # Execute template directly (for non-Rails templates)
-            output = execute_template_directly(template_file)
-            success = true
+            # Execute template directly (for non-Rails templates or incomplete Rails apps)
+            begin
+              output = execute_template_directly(template_file)
+              success = true  # If no exception was raised, consider it successful
+            rescue => e
+              output = "Template execution failed: #{e.message}"
+              success = false
+            end
           end
           
           {
@@ -319,10 +336,22 @@ module GitTemplate
         # This is a simplified approach - in practice, you might want more sophisticated handling
         begin
           template_content = File.read(template_file)
-          eval(template_content)
-          "Template executed directly"
+          
+          # Capture output from the template execution
+          output = StringIO.new
+          original_stdout = $stdout
+          $stdout = output
+          
+          begin
+            eval(template_content)
+            result = output.string
+            result = "Template executed directly (no output)" if result.empty?
+            result
+          ensure
+            $stdout = original_stdout
+          end
         rescue => e
-          "Template execution failed: #{e.message}"
+          raise e  # Let the caller handle the exception
         end
       end
 

@@ -11,8 +11,8 @@ module GitTemplate
       attr_reader :path, :expanded_path
 
       def initialize(path)
-        @path = path
-        @expanded_path = File.expand_path(path)
+        @path = path || '.'
+        @expanded_path = File.expand_path(@path)
       end
 
       # Core folder checks
@@ -155,21 +155,30 @@ module GitTemplate
         current_dir = Dir.pwd
         
         if @expanded_path.start_with?(current_dir)
-          @expanded_path[(current_dir.length + 1)..-1] # +1 to skip the '/'
+          relative = @expanded_path[(current_dir.length + 1)..-1] # +1 to skip the '/'
+          # Handle case where path is exactly the current directory
+          return relative.nil? || relative.empty? ? '.' : relative
         else
-          @path.start_with?('/') ? @path[1..-1] : @path
+          # Handle absolute paths that don't start with current dir
+          return @path.start_with?('/') ? @path[1..-1] : @path
         end
       end
 
       def build_templated_patterns(templated_path)
+        return [templated_path] if templated_path.nil? || templated_path.empty?
+        
         parent_dir = File.dirname(@expanded_path)
         folder_name = File.basename(@expanded_path)
         
-        [
-          templated_path,  # New: templated/examples/rails/simple
-          File.join(parent_dir, "#{folder_name}-templated"),  # Legacy: simple-templated
-          File.join(parent_dir, "#{folder_name}-templatd")   # Handle typo in existing examples
-        ]
+        patterns = [templated_path]  # New: templated/examples/rails/simple
+        
+        # Only add legacy patterns if we have valid parent_dir and folder_name
+        if parent_dir && folder_name && !folder_name.empty?
+          patterns << File.join(parent_dir, "#{folder_name}-templated")  # Legacy: simple-templated
+          patterns << File.join(parent_dir, "#{folder_name}-templatd")   # Handle typo in existing examples
+        end
+        
+        patterns
       end
     end
   end
