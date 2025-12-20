@@ -1,6 +1,6 @@
 module GitTemplate
   module Rule
-    class Reverse
+    module Reverse
       def self.included(base)
         base.class_eval do
           def reverse_path_ok?(path)

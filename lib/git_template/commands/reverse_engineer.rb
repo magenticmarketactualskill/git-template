@@ -2,6 +2,7 @@ require_relative '../services/rails_file_type_mapper'
 require_relative '../services/reverse_engineer_parser'
 require_relative '../services/template_processor'
 require_relative '../generator/routes'
+require_relative '../rule/reverse'
 
 module GitTemplate
   module Command
