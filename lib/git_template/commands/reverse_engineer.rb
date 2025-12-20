@@ -1,10 +1,12 @@
 require_relative '../services/rails_file_type_mapper'
 require_relative '../services/reverse_engineer_parser'
 require_relative '../services/template_processor'
+require_relative '../generator/routes'
 
 module GitTemplate
   module Command
     module ReverseEngineer
+      include GitTemplate::Rule::Reverse
       def self.included(base)
         base.class_eval do
           desc "reverse_engineer", "Analyze Rails repository and map files to generators"
@@ -15,13 +17,8 @@ module GitTemplate
           option :output, type: :string, desc: "Output directory for templated files (defaults to templated/<repo_name>)"
           
           def reverse_engineer
-            repo_path = options[:path]
-            
-            unless File.directory?(repo_path)
-              @logger.error "Path does not exist: #{repo_path}"
-              return
-            end
-            
+            repo_path = reverse_path_ok?(options[:path])
+ 
             @logger.info "Analyzing Rails repository at: #{repo_path}"
             
             if options[:execute]
@@ -210,7 +207,11 @@ module GitTemplate
                 
                 case generator
                 when 'GitTemplate::Generators::Routes'
-                  routes = GitTemplate::Services::ReverseEngineerParser.parse_routes(full_path)
+                  # Create a temporary class to access the Routes DSL parse method
+                  routes_parser = Class.new do
+                    include GitTemplate::Generators::Routes
+                  end
+                  routes = routes_parser.parse(full_path)
                   content << "# Create #{file_info[:path]}"
                   content << "create_file 'config/routes.rb' do <<-RUBY"
                   content << "Rails.application.routes.draw do"
@@ -301,7 +302,11 @@ module GitTemplate
           def generate_routes_template_part(content, file_list, repo_path)
             file_list.each do |file_info|
               full_path = File.join(repo_path, file_info[:path])
-              routes = GitTemplate::Services::ReverseEngineerParser.parse_routes(full_path)
+              # Create a temporary class to access the Routes DSL parse method
+              routes_parser = Class.new do
+                include GitTemplate::Generators::Routes
+              end
+              routes = routes_parser.parse(full_path)
               
               content << "  repo_path '#{file_info[:path]}'"
               content << "  "

@@ -1,33 +1,6 @@
 module GitTemplate
   module Services
     class ReverseEngineerParser
-      # Parse a routes.rb file and extract route definitions
-      def self.parse_routes(file_path)
-        content = File.read(file_path)
-        routes = []
-        
-        # Extract route definitions (simplified parser)
-        content.each_line do |line|
-          stripped = line.strip
-          
-          # Skip comments and blank lines
-          next if stripped.empty? || stripped.start_with?('#')
-          
-          # Skip the draw block declaration
-          next if stripped.include?('routes.draw')
-          
-          # Skip end statements
-          next if stripped == 'end'
-          
-          # Capture route definitions
-          if stripped.match?(/^\s*(get|post|put|patch|delete|resource|resources|root|namespace|scope|match)\s+/)
-            routes << stripped
-          end
-        end
-        
-        routes
-      end
-      
       # Parse a model file and extract basic information
       def self.parse_model(file_path)
         content = File.read(file_path)
