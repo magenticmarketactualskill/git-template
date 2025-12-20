@@ -5,6 +5,7 @@ $LOAD_PATH.unshift(lib_path)
 
 
 class GemFileGenerator0001 < GitTemplate::Generators::Base
+  repo_path 'Gemfile'
   golden_text <<-TEXT
 source "https://rubygems.org"
 

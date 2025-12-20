@@ -1,43 +1,223 @@
-      def generate
-        output = []
-        
-        # Add metadata header
-        output << metadata_comment
-        output << ""
-        
-        output << 'source "https://rubygems.org"'
-        output << ""
-                if metadata[:git]
-          git_info = metadata[:git]
-          if git_info[:commit]
-            lines << "#{prefix} Git commit: #{git_info[:commit]}"
-          end
-          if git_info[:branch]
-            lines << "#{prefix} Git branch: #{git_info[:branch]}"
-          end
-          if git_info[:status] && !git_info[:status].empty?
-            lines << "#{prefix} Git status: #{git_info[:status]}"
-          end
-          if git_info[:remote]
-            lines << "#{prefix} Git remote: #{git_info[:remote]}"
-          end
-          
-        begin
-          # Get current commit hash
-          commit = `git rev-parse HEAD 2>/dev/null`.strip
-          git_info[:commit] = commit unless commit.empty?
-          
-          # Get current branch
-          branch = `git rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
-          git_info[:branch] = branch unless branch.empty?
-          
-          # Get repository status (check if there are uncommitted changes)
-          status_output = `git status --porcelain 2>/dev/null`.strip
-          if !status_output.empty?
-            git_info[:status] = "dirty (#{status_output.lines.count} changes)"
-          else
-            git_info[:status] = "clean"
-          end
+require 'json'
+require 'digest'
 
-        puts "Generated Gemfile with metadata"
+module GitTemplate
+  module Generators
+    module Metadata
+      protected
+
+      def build_metadata
+        @_metadata_cache ||= begin
+          {
+            generator: generator_metadata,
+            generation: generation_metadata,
+            environment: environment_metadata,
+            git: git_metadata,
+            config: config_metadata,
+            source: source_metadata
+          }
+        end
       end
+
+      def metadata_comment(prefix: '#', format: :standard)
+        case format
+        when :compact
+          compact_metadata_comment(prefix)
+        when :detailed
+          detailed_metadata_comment(prefix)
+        else
+          standard_metadata_comment(prefix)
+        end
+      end
+
+      def metadata_json(pretty: false)
+        if pretty
+          JSON.pretty_generate(metadata)
+        else
+          JSON.generate(metadata)
+        end
+      end
+
+      def metadata_fingerprint
+        key_data = {
+          generator: metadata[:generator][:class_name],
+          timestamp: metadata[:generation][:timestamp],
+          git_commit: metadata[:git][:commit],
+          source_file: metadata[:source][:file_path]
+        }
+        Digest::SHA256.hexdigest(JSON.generate(key_data))
+      end
+
+      private
+
+      def generator_metadata
+        {
+          class_name: self.class.name,
+          golden_text_present: !@golden_text.nil?,
+          golden_text_length: @golden_text&.length || 0
+        }
+      end
+
+      def generation_metadata
+        {
+          timestamp: Time.now.utc.iso8601,
+          ruby_version: RUBY_VERSION,
+          ruby_platform: RUBY_PLATFORM,
+          working_directory: Dir.pwd
+        }
+      end
+
+      def environment_metadata
+        {
+          user: ENV['USER'] || ENV['USERNAME'] || 'unknown',
+          hostname: (ENV['HOSTNAME'] || `hostname`.strip rescue 'unknown')
+        }
+      end
+
+      def git_metadata
+        @_git_metadata_cache ||= collect_git_information
+      end
+
+      def config_metadata
+        return {} unless @config
+        {
+          config_class: @config.class.name,
+          config_id: @config.respond_to?(:id) ? @config.id : nil
+        }.compact
+      end
+
+      def source_metadata
+        caller_info = caller_locations(3, 1).first
+        return {} unless caller_info
+        {
+          file_path: caller_info.path,
+          line_number: caller_info.lineno,
+          method_name: caller_info.label
+        }
+      end
+
+      def collect_git_information
+        git_info = { available: false }
+        return git_info unless git_repository_available?
+
+        begin
+          git_info.merge!(
+            available: true,
+            commit: git_current_commit,
+            branch: git_current_branch,
+            status: git_repository_status,
+            remote: git_remote_info
+          )
+        rescue => e
+          git_info[:error] = { message: e.message, class: e.class.name }
+        end
+
+        git_info
+      end
+
+      def git_repository_available?
+        system('git rev-parse --git-dir > /dev/null 2>&1')
+      end
+
+      def git_current_commit
+        {
+          hash: git_command('rev-parse HEAD'),
+          short_hash: git_command('rev-parse --short HEAD'),
+          author: git_command('log -1 --format="%an"'),
+          message: git_command('log -1 --format="%s"')
+        }
+      end
+
+      def git_current_branch
+        { name: git_command('rev-parse --abbrev-ref HEAD') }.compact
+      end
+
+      def git_repository_status
+        porcelain_output = git_command('status --porcelain')
+        status_lines = porcelain_output.lines.map(&:strip)
+        {
+          clean: status_lines.empty?,
+          total_changes: status_lines.count,
+          summary: status_lines.empty? ? 'clean' : "#{status_lines.count} changes"
+        }
+      end
+
+      def git_remote_info
+        remotes = git_command('remote -v').lines.map(&:strip)
+        return {} if remotes.empty?
+
+        remote_data = {}
+        remotes.each do |remote_line|
+          name, url, type = remote_line.split(/\s+/)
+          next unless name && url
+          remote_data[name] ||= {}
+          remote_data[name][type.tr('()', '').to_sym] = url
+        end
+
+        { origin_url: remote_data.dig('origin', :fetch), remotes: remote_data }.compact
+      end
+
+      def git_command(cmd)
+        result = `git #{cmd} 2>/dev/null`.strip
+        result.empty? ? nil : result
+      end
+
+      def standard_metadata_comment(prefix)
+        lines = [
+          "#{prefix} Generated by: #{metadata[:generator][:class_name]}",
+          "#{prefix} Generated at: #{metadata[:generation][:timestamp]}"
+        ]
+
+        if metadata[:config][:config_id]
+          lines << "#{prefix} Config ID: #{metadata[:config][:config_id]}"
+        end
+
+        if metadata[:source][:file_path]
+          lines << "#{prefix} Source: #{metadata[:source][:file_path]}:#{metadata[:source][:line_number]}"
+        end
+
+        if metadata[:git][:available] && metadata[:git][:commit]
+          lines << "#{prefix} Git: #{metadata[:git][:commit][:short_hash]} (#{metadata[:git][:branch][:name]})"
+          unless metadata[:git][:status][:clean]
+            lines << "#{prefix} Status: #{metadata[:git][:status][:summary]}"
+          end
+        end
+
+        lines.join("\n")
+      end
+
+      def compact_metadata_comment(prefix)
+        generator_name = metadata[:generator][:class_name].split('::').last
+        timestamp = metadata[:generation][:timestamp]
+        git_info = metadata[:git][:available] ? metadata[:git][:commit][:short_hash] : "no-git"
+        "#{prefix} Generated: #{generator_name} @ #{timestamp} (#{git_info})"
+      end
+
+      def detailed_metadata_comment(prefix)
+        lines = [
+          "#{prefix} " + "=" * 60,
+          "#{prefix} GENERATION METADATA",
+          "#{prefix} " + "=" * 60,
+          "#{prefix}",
+          "#{prefix} Generator: #{metadata[:generator][:class_name]}",
+          "#{prefix} Timestamp: #{metadata[:generation][:timestamp]}",
+          "#{prefix} Ruby: #{metadata[:generation][:ruby_version]}",
+          "#{prefix}"
+        ]
+
+        if metadata[:git][:available]
+          lines.concat([
+            "#{prefix} Git Information:",
+            "#{prefix}   Commit: #{metadata[:git][:commit][:hash]}",
+            "#{prefix}   Branch: #{metadata[:git][:branch][:name]}",
+            "#{prefix}   Status: #{metadata[:git][:status][:summary]}",
+            "#{prefix}"
+          ])
+        end
+
+        lines << "#{prefix} " + "=" * 60
+        lines.join("\n")
+      end
+    end
+  end
+end
