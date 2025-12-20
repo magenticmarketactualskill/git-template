@@ -141,9 +141,20 @@ module GitTemplate
             puts "Found #{files.count} file(s) to reverse engineer"
             puts "=" * 80 + "\n"
             
-            # Determine output directory
-            repo_name = File.basename(File.expand_path(repo_path))
-            output_dir = options[:output] || File.join(Dir.pwd, 'templated', repo_name)
+            # Determine output directory - preserve the relative path structure
+            if options[:output]
+              output_dir = options[:output]
+            else
+              # If repo_path is relative, preserve its structure under templated/
+              # e.g., examples/rails8-simple -> templated/examples/rails8-simple
+              if Pathname.new(repo_path).relative?
+                output_dir = File.join(Dir.pwd, 'templated', repo_path)
+              else
+                # If absolute, just use the basename
+                repo_name = File.basename(repo_path)
+                output_dir = File.join(Dir.pwd, 'templated', repo_name)
+              end
+            end
             
             # Create .git_template/template_part directory
             template_part_dir = File.join(output_dir, '.git_template', 'template_part')
