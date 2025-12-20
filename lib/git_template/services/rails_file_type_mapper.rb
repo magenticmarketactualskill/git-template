@@ -86,7 +86,7 @@ module GitTemplate
           
           if subtree[:_generator]
             # File with generator mapping
-            generator_name = subtree[:_generator]&.split('::')&.last || 'Unknown'
+            generator_name = subtree[:_generator] || 'Unknown'
             lines << "#{prefix}#{name} → #{generator_name}"
           elsif subtree.keys.any? { |k| !k.start_with?('_') }
             # Directory with children
